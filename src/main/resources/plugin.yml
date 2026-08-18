@@ -1,0 +1,60 @@
+name: DashaEconomy
+version: '${project.version}'
+main: io.github.sql1024.dasha.DashaEconomyPlugin
+api-version: '26.1'
+description: 大沙幣經濟系統 — 股市、拍賣行、伺服器商店與礦物收購，共用同一套帳本
+authors: [SQL1024-sql]
+website: https://github.com/SQL1024-sql/economy_plugin
+folia-supported: false
+
+commands:
+  eco:
+    description: 大沙幣餘額、經濟報告與管理指令
+    usage: /eco help
+    aliases: [money, bal, balance, dasha]
+  stock:
+    description: 股市看盤與交易
+    usage: /stock help
+    aliases: [gs, stocks]
+  ah:
+    description: 玩家拍賣行
+    usage: /ah [sell|my|collect]
+    aliases: [auctionhouse, market]
+  store:
+    description: 伺服器建材商店
+    usage: /store [分類]
+    aliases: [shop, serverstore]
+  sell:
+    description: 把礦物賣給系統換大沙幣
+    usage: /sell [all|price]
+    aliases: [sellore]
+
+permissions:
+  dasha.user:
+    description: 查自己的大沙幣餘額
+    default: true
+  dasha.stock:
+    description: 使用股市（看盤、買賣、自己的持股）
+    default: true
+  dasha.market:
+    description: 使用拍賣行
+    default: true
+  dasha.store:
+    description: 使用伺服器商店
+    default: true
+  dasha.sell:
+    description: 把礦物賣給系統
+    default: true
+  dasha.top:
+    description: 查看富豪榜
+    default: true
+  dasha.admin:
+    description: 管理指令（reload / 發錢 / 強制下架 / 經濟報告 / 發新聞）
+    default: op
+    children:
+      dasha.user: true
+      dasha.stock: true
+      dasha.market: true
+      dasha.store: true
+      dasha.sell: true
+      dasha.top: true

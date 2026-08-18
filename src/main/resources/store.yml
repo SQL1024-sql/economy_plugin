@@ -1,0 +1,233 @@
+# ============================================================
+#  伺服器商店 /store
+#
+#  只賣建築材料，而且「只賣不收」—— 這裡是大沙幣的主要消耗管道。
+#
+#  ⚠ 定價鐵則
+#  如果商店賣的方塊可以拆解成 sell.yml 裡收購的礦物，
+#  那它的售價必須高於拆解價值，否則玩家就能：
+#      買方塊 → 拆成礦物 → 賣回系統 → 賺差價 → 無限重複
+#  這是無限印鈔機，會在幾天內毀掉整個經濟。
+#
+#  規則：商店價 ≥ 拆解後的礦物收購總值 × 1.5
+#
+#  插件啟動時會用 Minecraft 真實的合成表自動檢查一遍，
+#  有問題會在 console 印警告並附上建議價格。
+#  也可以隨時用 /eco audit 手動檢查。
+#
+#  改完用 /eco reload 生效。
+# ============================================================
+
+enabled: true
+gui-title: '<gradient:#a1c4fd:#c2e9fb>伺服器商店</gradient>'
+
+categories:
+
+  # ------------------------------------------------------------
+  stone:
+    name: '<gray>石材'
+    icon: STONE_BRICKS
+    items:
+      COBBLESTONE: 2
+      STONE: 4
+      SMOOTH_STONE: 5
+      DEEPSLATE: 3
+      COBBLED_DEEPSLATE: 3
+      ANDESITE: 3
+      DIORITE: 3
+      GRANITE: 3
+      TUFF: 3
+      CALCITE: 5
+      DRIPSTONE_BLOCK: 4
+      POLISHED_ANDESITE: 5
+      POLISHED_DIORITE: 5
+      POLISHED_GRANITE: 5
+      POLISHED_DEEPSLATE: 5
+      STONE_BRICKS: 6
+      MOSSY_STONE_BRICKS: 8
+      CHISELED_STONE_BRICKS: 8
+      DEEPSLATE_BRICKS: 6
+      DEEPSLATE_TILES: 7
+      STONE_BRICK_STAIRS: 4
+      STONE_BRICK_SLAB: 2
+      STONE_BRICK_WALL: 4
+      COBBLESTONE_STAIRS: 2
+      COBBLESTONE_SLAB: 1
+      COBBLESTONE_WALL: 2
+
+  # ------------------------------------------------------------
+  concrete:
+    name: '<aqua>混凝土與陶瓦'
+    icon: LIGHT_BLUE_CONCRETE
+    items:
+      WHITE_CONCRETE: 8
+      LIGHT_GRAY_CONCRETE: 8
+      GRAY_CONCRETE: 8
+      BLACK_CONCRETE: 8
+      BROWN_CONCRETE: 8
+      RED_CONCRETE: 8
+      ORANGE_CONCRETE: 8
+      YELLOW_CONCRETE: 8
+      LIME_CONCRETE: 8
+      GREEN_CONCRETE: 8
+      CYAN_CONCRETE: 8
+      LIGHT_BLUE_CONCRETE: 8
+      BLUE_CONCRETE: 8
+      PURPLE_CONCRETE: 8
+      MAGENTA_CONCRETE: 8
+      PINK_CONCRETE: 8
+      TERRACOTTA: 6
+      WHITE_TERRACOTTA: 7
+      GRAY_TERRACOTTA: 7
+      BLACK_TERRACOTTA: 7
+      RED_TERRACOTTA: 7
+      ORANGE_TERRACOTTA: 7
+      YELLOW_TERRACOTTA: 7
+      LIME_TERRACOTTA: 7
+      CYAN_TERRACOTTA: 7
+      BLUE_TERRACOTTA: 7
+      PURPLE_TERRACOTTA: 7
+      WHITE_GLAZED_TERRACOTTA: 12
+      BLUE_GLAZED_TERRACOTTA: 12
+      RED_GLAZED_TERRACOTTA: 12
+      GREEN_GLAZED_TERRACOTTA: 12
+
+  # ------------------------------------------------------------
+  glass:
+    name: '<white>玻璃'
+    icon: GLASS
+    items:
+      GLASS: 5
+      GLASS_PANE: 2
+      TINTED_GLASS: 14
+      WHITE_STAINED_GLASS: 7
+      LIGHT_GRAY_STAINED_GLASS: 7
+      GRAY_STAINED_GLASS: 7
+      BLACK_STAINED_GLASS: 7
+      RED_STAINED_GLASS: 7
+      ORANGE_STAINED_GLASS: 7
+      YELLOW_STAINED_GLASS: 7
+      LIME_STAINED_GLASS: 7
+      GREEN_STAINED_GLASS: 7
+      CYAN_STAINED_GLASS: 7
+      LIGHT_BLUE_STAINED_GLASS: 7
+      BLUE_STAINED_GLASS: 7
+      PURPLE_STAINED_GLASS: 7
+      MAGENTA_STAINED_GLASS: 7
+      PINK_STAINED_GLASS: 7
+      BROWN_STAINED_GLASS: 7
+      WHITE_STAINED_GLASS_PANE: 3
+      BLACK_STAINED_GLASS_PANE: 3
+      GRAY_STAINED_GLASS_PANE: 3
+
+  # ------------------------------------------------------------
+  wood:
+    name: '<gold>木材'
+    icon: OAK_PLANKS
+    items:
+      OAK_LOG: 6
+      SPRUCE_LOG: 6
+      BIRCH_LOG: 6
+      JUNGLE_LOG: 6
+      ACACIA_LOG: 6
+      DARK_OAK_LOG: 6
+      MANGROVE_LOG: 6
+      CHERRY_LOG: 8
+      PALE_OAK_LOG: 8
+      CRIMSON_STEM: 8
+      WARPED_STEM: 8
+      BAMBOO_BLOCK: 5
+      OAK_PLANKS: 2
+      SPRUCE_PLANKS: 2
+      BIRCH_PLANKS: 2
+      JUNGLE_PLANKS: 2
+      ACACIA_PLANKS: 2
+      DARK_OAK_PLANKS: 2
+      MANGROVE_PLANKS: 2
+      CHERRY_PLANKS: 3
+      BAMBOO_PLANKS: 2
+      CRIMSON_PLANKS: 3
+      WARPED_PLANKS: 3
+      OAK_STAIRS: 3
+      OAK_SLAB: 1
+      OAK_FENCE: 3
+      SPRUCE_STAIRS: 3
+      SPRUCE_SLAB: 1
+      SPRUCE_FENCE: 3
+      DARK_OAK_STAIRS: 3
+      DARK_OAK_SLAB: 1
+
+  # ------------------------------------------------------------
+  brick:
+    name: '<red>磚材與特殊'
+    icon: BRICKS
+    items:
+      BRICKS: 10
+      NETHER_BRICKS: 8
+      RED_NETHER_BRICKS: 12
+      PRISMARINE: 10
+      PRISMARINE_BRICKS: 14
+      DARK_PRISMARINE: 14
+      PURPUR_BLOCK: 12
+      END_STONE: 6
+      END_STONE_BRICKS: 8
+      BLACKSTONE: 5
+      POLISHED_BLACKSTONE: 7
+      POLISHED_BLACKSTONE_BRICKS: 8
+      BASALT: 4
+      SMOOTH_BASALT: 5
+      MUD_BRICKS: 6
+      PACKED_MUD: 4
+      SANDSTONE: 4
+      SMOOTH_SANDSTONE: 5
+      CHISELED_SANDSTONE: 6
+      RED_SANDSTONE: 4
+      SMOOTH_RED_SANDSTONE: 5
+      SAND: 2
+      RED_SAND: 2
+      GRAVEL: 2
+      CLAY: 4
+
+  # ------------------------------------------------------------
+  #  礦物方塊
+  #
+  #  這幾樣可以拆回礦物，價格全部套用「拆解價值 × 1.5」算出來。
+  #  如果你動了 sell.yml 的價格，這裡也一定要跟著改，
+  #  啟動檢查會告訴你新的建議價。
+  # ------------------------------------------------------------
+  oreblock:
+    name: '<light_purple>礦物方塊'
+    icon: COPPER_BLOCK
+    items:
+      # 9 銅錠 × 4 = 36 → 至少 54
+      COPPER_BLOCK:
+        price: 54
+        note: '拆解價值 36，安全價 54'
+      # 4 石英 × 8 = 32 → 至少 48（原版其實不能拆，保守定價）
+      QUARTZ_BLOCK:
+        price: 48
+        note: '拆解價值 32，安全價 48'
+      CHISELED_QUARTZ_BLOCK:
+        price: 48
+      QUARTZ_PILLAR:
+        price: 48
+      # 9 煤炭 × 3 = 27 → 至少 41
+      COAL_BLOCK:
+        price: 41
+        note: '拆解價值 27，安全價 41'
+      # 9 紅石 × 3 = 27 → 至少 41
+      REDSTONE_BLOCK:
+        price: 41
+        note: '拆解價值 27，安全價 41'
+      # 4 紫水晶 × 6 = 24 → 至少 36
+      AMETHYST_BLOCK:
+        price: 36
+        note: '拆解價值 24，安全價 36'
+      # 9 青金石 × 12 = 108 → 至少 162
+      LAPIS_BLOCK:
+        price: 162
+        note: '拆解價值 108，安全價 162'
+      CUT_COPPER: 56
+      EXPOSED_COPPER: 54
+      WEATHERED_COPPER: 54
+      OXIDIZED_COPPER: 54

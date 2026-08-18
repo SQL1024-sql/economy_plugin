@@ -1,0 +1,256 @@
+# ============================================================
+#  股市 /stock
+#
+#  ⚠ 所有股價都是「模擬」出來的，跟真實股市無關，
+#    只是借用大家熟悉的公司名稱與代號當作遊戲內容。
+#
+#  ⚠⚠ 這裡的每一道限制都不是裝飾品
+#
+#  你的交易對手是伺服器本身，它有無限的錢和無限的股票。
+#  這代表玩家低買高賣賺到的錢不是從別的玩家口袋來的，
+#  是「憑空產生」的 —— 股市是這套經濟裡除了挖礦以外，
+#  唯一能生出大沙幣的地方，而且它沒有挖礦那種天然上限。
+#
+#  下面五道防線就是用來限制它能印多少：
+#    1. 手續費        買賣各收，直接銷毀
+#    2. 大單滑價      買越多買越貴、賣越多賣越便宜
+#    3. 持股上限      封住單一玩家的最大曝險
+#    4. 單日漲跌幅    一則新聞不可能把股價推到天文數字
+#    5. 新聞停牌      消滅「看到利多就穩賺」的無風險套利
+#
+#  記得定期用 /eco stats 看「股市淨資金流」。
+#  那個數字如果一直為正而且超過挖礦收入，就是股市在印鈔，
+#  要調高手續費或收緊持股上限。
+#
+#  改完用 /eco reload 生效。
+# ============================================================
+
+market:
+  # 每隔幾秒更新一次股價（一次更新 = 一根 K 棒）
+  update-interval-seconds: 300
+  # 單次更新最大漲跌幅（%），防止價格暴衝
+  max-tick-change-percent: 18.0
+  # 每檔股票保留幾個歷史價格點（走勢圖與技術指標用）
+  history-points: 120
+
+  # --- 防線 1：手續費（%），買賣各收一次，收到的錢直接銷毀 ---
+  buy-fee-percent: 1.0
+  sell-fee-percent: 1.0
+
+  # --- 防線 2：大單滑價 ---
+  # 成交價 = 現價 × (1 ± 這個數字 × 交易股數)
+  # 0.00002 表示買 200 股時成交價比報價貴 0.4%。
+  # 效果：一次下大單一定比分批買貴，鯨魚沒辦法用報價掃貨。
+  slippage-per-share: 0.00002
+
+  # --- 防線 4：單日漲跌幅限制（%）---
+  # 股價一天之內最多離開「當日開盤價」這麼多。台北時間午夜重置。
+  daily-limit-percent: 20.0
+
+  # 每次更新後是否全服廣播漲跌摘要
+  broadcast-updates: false
+  # 單次更新漲跌超過這個 % 時，全服廣播該檔股票（設 0 關閉）
+  announce-big-moves-percent: 10.0
+
+# ------------------------------------------------------------
+#  防線 3：交易與持股上限
+# ------------------------------------------------------------
+limits:
+  # 單筆交易最多幾股
+  max-shares-per-trade: 200
+  # 每位玩家每檔股票最多持有幾股
+  max-shares-per-stock: 1000
+  # 單筆交易金額上限（大沙幣）
+  max-coin-per-transaction: 500000
+
+# ------------------------------------------------------------
+#  財經新聞 —— 唯一影響股價的指標
+#
+#  沒有供需機制：玩家買多買少完全不影響價格，價格是外生的。
+#  股價只被新聞推動。
+#
+#  每次股價更新後有機率跳出一則新聞，指向某一檔股票的利多或
+#  利空，接下來幾次更新裡給那檔股票一點額外的漲跌傾向 ——
+#  但只是傾向，不是保證：
+#    * accuracy-percent 決定新聞說的方向有多少機率是真的
+#    * 剩下的機率就是假消息，方向會相反
+#    * 而且隨機波動仍然可能蓋過新聞的影響
+#  所以看新聞下注長期會贏，但單筆還是會輸，這是刻意的。
+#
+#  --- 防線 5：停牌 ---
+#  發布流程是：
+#    ① 廣播「即將發布重大消息」+ 該股停牌
+#    ② 停牌期間股價已經開始朝新方向走，但沒人能交易
+#    ③ 停牌結束，公佈標題，恢復交易
+#  沒有這道，看到利多全押就是保證獲利，股市直接變提款機。
+# ------------------------------------------------------------
+news:
+  enabled: true
+  # 每次股價更新，有多少 % 機率發生一則新聞
+  chance-percent: 25.0
+  # 新聞方向的準確率（%）。50 = 純亂猜，100 = 穩賺（不建議）
+  accuracy-percent: 70.0
+  # 一則新聞影響幾次股價更新
+  duration-updates: 3
+  # 新聞的力道：實際偏移量 = 這個數字 × 該股波動率 × 隨機 0.6~1.4
+  impact-multiplier: 0.7
+  # 同時最多存在幾則新聞
+  max-active: 3
+  # 是否全服廣播新聞
+  broadcast: true
+  # 新聞跑馬燈保留幾則歷史（/stock news 會顯示）
+  keep-history: 10
+
+  # 停牌秒數。設 0 關閉（強烈不建議，等於開放無風險套利）
+  halt-seconds: 60
+
+  # 防內線交易：管理員用 /stock news 發布後，自己在這麼多分鐘內
+  # 不能交易那檔股票。所有人工發布都會寫進稽核紀錄（/stock audit）。
+  insider-lock-minutes: 10
+
+  headlines:
+    bullish:
+      - '{name} 公布財報優於預期，外資調高目標價'
+      - '{name} 拿下大單，法人喊進'
+      - '{name} 新產品線傳出提前量產'
+      - '{name} 宣布庫藏股買回'
+      - '分析師：{name} 進入成長循環，評等調升至買進'
+      - '{name} 傳出將納入指數成分股'
+      - '{name} 上季出貨量創同期新高'
+    bearish:
+      - '{name} 財報不如預期，盤後重挫'
+      - '{name} 遭大客戶砍單，供應鏈拉警報'
+      - '{name} 傳出高層異動，市場觀望'
+      - '外資調降 {name} 評等至中立'
+      - '{name} 產線傳出良率問題'
+      - '{name} 面臨新對手低價競爭'
+      - '{name} 大股東申報轉讓持股'
+
+gui:
+  title: '<gradient:#f6d365:#fda085>大沙幣股市</gradient>'
+  # 走勢圖寬度（GUI 與聊天欄共用）
+  chart-width: 24
+
+# ------------------------------------------------------------
+#  技術指標（純粹由歷史股價算出來，不含未來資訊）
+#    短均線在長均線之上 = 多頭排列，反之空頭排列
+# ------------------------------------------------------------
+indicators:
+  enabled: true
+  short-period: 5
+  long-period: 20
+  # 均線差距超過這個 % 才算多頭／空頭，否則視為盤整
+  trend-threshold-percent: 0.5
+
+# ------------------------------------------------------------
+#  股票清單（伺服器固定，玩家不能自己開公司）
+#  symbol 就是指令要打的代號（不分大小寫；台股代號要加引號）
+#    display-name : 顯示名稱（支援 MiniMessage 標籤）
+#    icon         : GUI 圖示的 Material
+#    initial-price: 初始股價（每股要幾個大沙幣）
+#    volatility   : 波動率，每次更新的對數報酬標準差（0.02 = 穩、0.08 = 很刺激）
+#    drift        : 長期趨勢，每次更新的平均對數報酬（正 = 緩漲、負 = 緩跌）
+#    min-price / max-price : 股價上下限
+#
+#  ⚠ 這些是模擬價格，不是真實報價，也不會連到任何交易所。
+#    嫌太貴就把 initial-price 跟 min/max 一起等比例調小。
+# ------------------------------------------------------------
+stocks:
+  # ---------------- 美股 ----------------
+  AAPL:
+    display-name: '<white>蘋果 <gray>Apple'
+    icon: APPLE
+    initial-price: 232.0
+    volatility: 0.035
+    drift: 0.0006
+    min-price: 60.0
+    max-price: 1200.0
+  NVDA:
+    display-name: '<green>輝達 <gray>NVIDIA'
+    icon: COMPARATOR
+    initial-price: 178.0
+    volatility: 0.065
+    drift: 0.0012
+    min-price: 40.0
+    max-price: 1600.0
+  TSLA:
+    display-name: '<red>特斯拉 <gray>Tesla'
+    icon: MINECART
+    initial-price: 340.0
+    volatility: 0.075
+    drift: 0.0004
+    min-price: 70.0
+    max-price: 2400.0
+  MSFT:
+    display-name: '<aqua>微軟 <gray>Microsoft'
+    icon: GLASS
+    initial-price: 505.0
+    volatility: 0.033
+    drift: 0.0007
+    min-price: 130.0
+    max-price: 2600.0
+  GOOGL:
+    display-name: '<yellow>Alphabet <gray>Google'
+    icon: SPYGLASS
+    initial-price: 195.0
+    volatility: 0.040
+    drift: 0.0006
+    min-price: 50.0
+    max-price: 1100.0
+  AMZN:
+    display-name: '<gold>亞馬遜 <gray>Amazon'
+    icon: CHEST
+    initial-price: 225.0
+    volatility: 0.045
+    drift: 0.0006
+    min-price: 55.0
+    max-price: 1300.0
+  # ---------------- 台股 ----------------
+  '2330':
+    display-name: '<dark_aqua>台積電'
+    icon: AMETHYST_SHARD
+    initial-price: 1120.0
+    volatility: 0.040
+    drift: 0.0009
+    min-price: 300.0
+    max-price: 6000.0
+  '2317':
+    display-name: '<gray>鴻海'
+    icon: IRON_INGOT
+    initial-price: 215.0
+    volatility: 0.040
+    drift: 0.0005
+    min-price: 55.0
+    max-price: 1200.0
+  '2454':
+    display-name: '<light_purple>聯發科'
+    icon: REPEATER
+    initial-price: 1385.0
+    volatility: 0.055
+    drift: 0.0007
+    min-price: 350.0
+    max-price: 7500.0
+  '2603':
+    display-name: '<blue>長榮'
+    icon: OAK_BOAT
+    initial-price: 205.0
+    volatility: 0.070
+    drift: 0.0002
+    min-price: 40.0
+    max-price: 1500.0
+  '2412':
+    display-name: '<dark_green>中華電'
+    icon: LIGHTNING_ROD
+    initial-price: 132.0
+    volatility: 0.018
+    drift: 0.0002
+    min-price: 60.0
+    max-price: 400.0
+  '0050':
+    display-name: '<green>元大台灣50'
+    icon: EMERALD
+    initial-price: 195.0
+    volatility: 0.022
+    drift: 0.0005
+    min-price: 70.0
+    max-price: 900.0

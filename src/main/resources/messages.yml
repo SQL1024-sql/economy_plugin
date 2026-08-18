@@ -1,0 +1,40 @@
+# ============================================================
+#  訊息文字（MiniMessage 格式）
+#  佔位符用 {大括號}；{currency} 會自動換成 config.yml 裡的貨幣名稱。
+#  改完用 /eco reload 生效。
+# ============================================================
+
+messages:
+  prefix: '<gradient:#f6d365:#fda085>[大沙]</gradient> <reset>'
+
+  # ---- 通用 ----
+  no-permission: '<red>你沒有權限這麼做。'
+  player-only: '<red>這個指令只能由玩家使用。'
+  invalid-number: '<red><white>{input}</white> 不是有效的數量。'
+
+  # ---- 股市 ----
+  unknown-stock: '<red>找不到代號 <white>{symbol}</white>，用 <yellow>/stock list</yellow> 看清單。'
+  shares-too-many: '<red>單筆交易最多 <white>{max}</white> 股。'
+  hold-limit: '<red>你最多只能持有 <white>{max}</white> 股 <white>{symbol}</white>（目前 <white>{held}</white> 股）。'
+  coin-limit: '<red>單筆交易金額上限為 <white>{max}</white> {currency}<red>（這筆是 <white>{coin}</white>）。'
+  not-enough-coin: '<red>{currency}<red> 不夠！需要 <white>{need}</white>，你的餘額只有 <white>{have}</white>。'
+  not-enough-shares: '<red>你只有 <white>{held}</white> 股 <white>{symbol}</white>。'
+  buy-success: '<green>買入 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，花費 <white>{coin}</white> {currency}<gray>（含手續費 {fee}）</gray>。'
+  sell-success: '<green>賣出 <white>{shares}</white> 股 {name} <gray>@</gray> <white>{price}</white>，入帳 <white>{coin}</white> {currency}<gray>（已扣手續費 {fee}）</gray>，損益 {pnl}。'
+  no-holdings: '<yellow>你目前沒有任何持股。'
+  inventory-full: '<yellow>背包放不下，多餘的東西已掉在你腳邊。'
+  reloaded: '<green>設定已重新載入（共 <white>{count}</white> 檔股票）。'
+  price-set: '<green>已將 {name} 的股價設為 <white>{price}</white>。'
+  ticked: '<green>已手動更新股價。'
+
+  # ---- 停牌與內線鎖 ----
+  stock-halted: '<yellow>⏸ <white>{symbol}</white> 停牌中，還有 <white>{seconds}</white> 秒。<gray>即將發布重大消息，暫停交易。'
+  insider-locked: '<red>你剛發布了 <white>{symbol}</white> 的新聞，<white>{minutes}</white> 分鐘內不能交易這檔（防內線）。'
+
+  # ---- 廣播 ----
+  big-move-up: '<green>▲ {name} <white>{symbol}</white> 大漲 <white>{change}%</white>，現價 <white>{price}</white> {currency}<green>！'
+  big-move-down: '<red>▼ {name} <white>{symbol}</white> 大跌 <white>{change}%</white>，現價 <white>{price}</white> {currency}<red>！'
+  news-pending: '<gold>⚠ <yellow>重大消息即將發布 <dark_gray>| <white>{symbol}</white> <red>停止交易 {seconds} 秒'
+  news-bullish: '<gold>📰 <yellow>財經快訊 <dark_gray>| <green>利多 <white>{symbol}</white> <gray>— {headline}'
+  news-bearish: '<gold>📰 <yellow>財經快訊 <dark_gray>| <red>利空 <white>{symbol}</white> <gray>— {headline}'
+  no-news: '<yellow>目前沒有任何新聞。'
