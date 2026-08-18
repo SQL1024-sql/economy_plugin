@@ -20,7 +20,7 @@ import org.jetbrains.annotations.NotNull;
  */
 public final class EcoCommand implements TabExecutor {
 
-    private static final List<String> PLAYER_SUB = List.of("help");
+    private static final List<String> PLAYER_SUB = List.of("bal", "menu", "top", "help");
     private static final List<String> ADMIN_SUB =
             List.of("stats", "top", "give", "take", "set", "audit", "reload", "help");
 
@@ -36,13 +36,27 @@ public final class EcoCommand implements TabExecutor {
         String sub = args.length == 0 ? "" : args[0].toLowerCase(Locale.ROOT);
 
         switch (sub) {
+            case "bal", "balance", "餘額" ->
+                    balance(sender, sender instanceof Player player ? player.getName() : null);
+            case "menu", "gui" -> {
+                if (sender instanceof Player player) {
+                    new io.github.sql1024.dasha.ui.HubMenu(plugin, player).open();
+                }
+            }
             case "stats" -> stats(sender, args);
             case "top" -> top(sender, args);
             case "give", "take", "set" -> adjust(sender, sub, args);
             case "audit" -> audit(sender);
             case "reload" -> reload(sender);
             case "help" -> help(sender);
-            case "" -> balance(sender, sender instanceof Player player ? player.getName() : null);
+            case "" -> {
+                if (sender instanceof Player player) {
+                    // The hub is the front door: everything the player can do lives behind it.
+                    new io.github.sql1024.dasha.ui.HubMenu(plugin, player).open();
+                } else {
+                    help(sender);
+                }
+            }
             default -> balance(sender, args[0]);
         }
         return true;

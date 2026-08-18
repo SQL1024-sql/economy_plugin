@@ -1,5 +1,6 @@
 package io.github.sql1024.dasha.auction.gui;
 
+import io.github.sql1024.dasha.ui.Gui;
 import io.github.sql1024.dasha.DashaEconomyPlugin;
 import io.github.sql1024.dasha.auction.AuctionSettings;
 import io.github.sql1024.dasha.auction.Msg;

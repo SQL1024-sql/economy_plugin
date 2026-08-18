@@ -9,8 +9,8 @@ folia-supported: false
 
 commands:
   eco:
-    description: 大沙幣餘額、經濟報告與管理指令
-    usage: /eco help
+    description: 大沙幣總管 — 所有經濟功能的統一入口
+    usage: /eco （開啟總管 GUI）
     aliases: [money, bal, balance, dasha]
   stock:
     description: 股市看盤與交易

@@ -1,7 +1,7 @@
 package io.github.sql1024.dasha.auction;
 
+import io.github.sql1024.dasha.ui.Gui;
 import io.github.sql1024.dasha.DashaEconomyPlugin;
-import io.github.sql1024.dasha.auction.gui.Gui;
 import io.papermc.paper.event.player.AsyncChatEvent;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.event.EventHandler;

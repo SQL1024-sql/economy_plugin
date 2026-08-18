@@ -99,6 +99,13 @@ public final class MarketMenu extends StockMenu {
     @Override
     public void onClick(int slot, ClickType click) {
         switch (slot) {
+            case SLOT_HUB -> {
+                click(Sound.UI_BUTTON_CLICK);
+                // Bukkit forbids opening an inventory inside a click event, so defer a tick.
+                org.bukkit.Bukkit.getScheduler().runTask(plugin,
+                        () -> new io.github.sql1024.dasha.ui.HubMenu(plugin, viewer).open());
+                return;
+            }
             case SLOT_PREVIOUS -> {
                 page--;
                 click(Sound.UI_BUTTON_CLICK);

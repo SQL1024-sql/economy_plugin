@@ -23,6 +23,7 @@ public abstract class StockMenu implements InventoryHolder {
     };
 
     protected static final int SLOT_PREVIOUS = 45;
+    protected static final int SLOT_HUB = 46;
     protected static final int SLOT_NEWS = 47;
     protected static final int SLOT_HELP = 48;
     protected static final int SLOT_SWITCH = 49;
@@ -125,6 +126,7 @@ public abstract class StockMenu implements InventoryHolder {
                         "<yellow>中鍵 <gray>在聊天欄看詳細走勢",
                         "<dark_gray>指令：/stock help")));
 
+        inventory.setItem(SLOT_HUB, io.github.sql1024.dasha.ui.HubMenu.backButton());
         inventory.setItem(SLOT_NEWS, newsButton());
 
         inventory.setItem(SLOT_SWITCH, Icons.of(org.bukkit.Material.CHEST, switchNameMini, switchLore));

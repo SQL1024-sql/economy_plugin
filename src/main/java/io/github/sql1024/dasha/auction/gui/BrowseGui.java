@@ -1,5 +1,6 @@
 package io.github.sql1024.dasha.auction.gui;
 
+import io.github.sql1024.dasha.ui.Gui;
 import io.github.sql1024.dasha.DashaEconomyPlugin;
 import io.github.sql1024.dasha.auction.Listing;
 import io.github.sql1024.dasha.auction.Msg;
@@ -22,6 +23,7 @@ public final class BrowseGui extends Gui {
     private static final int SLOT_MINE = 47;
     private static final int SLOT_SELL = 49;
     private static final int SLOT_COLLECT = 51;
+    private static final int SLOT_HUB = 46;
     private static final int SLOT_NEXT = 53;
 
     private int page;
@@ -73,6 +75,7 @@ public final class BrowseGui extends Gui {
                 "<gray>待領取 <white>" + boxSize + "</white> 件",
                 "", "<yellow>▶ 點擊領取"));
 
+        inventory.setItem(SLOT_HUB, io.github.sql1024.dasha.ui.HubMenu.backButton());
         fillEmpty(Material.BLACK_STAINED_GLASS_PANE);
     }
 
@@ -115,6 +118,11 @@ public final class BrowseGui extends Gui {
         }
 
         switch (slot) {
+            case SLOT_HUB -> {
+                plugin.click(player);
+                reopen(new io.github.sql1024.dasha.ui.HubMenu(plugin, player));
+                return;
+            }
             case SLOT_PREV -> {
                 if (page > 0) {
                     page--;

@@ -1,4 +1,4 @@
-package io.github.sql1024.dasha.auction.gui;
+package io.github.sql1024.dasha.ui;
 
 import io.github.sql1024.dasha.DashaEconomyPlugin;
 import io.github.sql1024.dasha.auction.Msg;

@@ -1,5 +1,6 @@
 package io.github.sql1024.dasha.auction.gui;
 
+import io.github.sql1024.dasha.ui.Gui;
 import io.github.sql1024.dasha.DashaEconomyPlugin;
 import io.github.sql1024.dasha.auction.Msg;
 import org.bukkit.Bukkit;
@@ -17,6 +18,7 @@ public final class CollectGui extends Gui {
     private static final int SLOT_ALL = 47;
     private static final int SLOT_BACK = 49;
     private static final int SLOT_NEXT = 53;
+    private static final int SLOT_HUB = 46;
 
     private int page;
     private int shownCount;
@@ -61,6 +63,7 @@ public final class CollectGui extends Gui {
                 "<yellow>背包放不下的會掉在腳邊。"));
         inventory.setItem(SLOT_BACK, icon(Material.BARRIER, "<red>返回拍賣行"));
 
+        inventory.setItem(SLOT_HUB, io.github.sql1024.dasha.ui.HubMenu.backButton());
         fillEmpty(Material.BLACK_STAINED_GLASS_PANE);
     }
 
@@ -89,6 +92,11 @@ public final class CollectGui extends Gui {
             case SLOT_BACK -> {
                 plugin.click(player);
                 reopen(new BrowseGui(plugin, player, 0));
+                return;
+            }
+            case SLOT_HUB -> {
+                plugin.click(player);
+                reopen(new io.github.sql1024.dasha.ui.HubMenu(plugin, player));
                 return;
             }
             case SLOT_ALL -> {

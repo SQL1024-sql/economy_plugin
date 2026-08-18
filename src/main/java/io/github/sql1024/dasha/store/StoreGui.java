@@ -27,6 +27,8 @@ public final class StoreGui implements InventoryHolder {
     private static final int SLOT_BALANCE = 49;
     private static final int SLOT_PREV = 45;
     private static final int SLOT_NEXT = 53;
+    private static final int SLOT_HUB = 46;
+    private static final int SLOT_CATEGORIES = 47;
 
     private final DashaEconomyPlugin plugin;
     private final Player player;
@@ -93,6 +95,10 @@ public final class StoreGui implements InventoryHolder {
                         "",
                         "<dark_gray>分類（用 /store <名稱> 切換）"), tabs)));
 
+        inventory.setItem(SLOT_HUB, io.github.sql1024.dasha.ui.HubMenu.backButton());
+        inventory.setItem(SLOT_CATEGORIES, button(Material.COMPASS, "<aqua>其他分類",
+                List.of("<gray>回到分類選擇頁")));
+
         ItemStack filler = button(Material.BLACK_STAINED_GLASS_PANE, "<gray>", List.of());
         for (int i = ITEMS_PER_PAGE; i < SIZE; i++) {
             if (inventory.getItem(i) == null) {
@@ -128,6 +134,18 @@ public final class StoreGui implements InventoryHolder {
             return;
         }
 
+        if (slot == SLOT_HUB) {
+            plugin.click(player);
+            org.bukkit.Bukkit.getScheduler().runTask(plugin,
+                    () -> new io.github.sql1024.dasha.ui.HubMenu(plugin, player).open());
+            return;
+        }
+        if (slot == SLOT_CATEGORIES) {
+            plugin.click(player);
+            org.bukkit.Bukkit.getScheduler().runTask(plugin,
+                    () -> new io.github.sql1024.dasha.ui.StoreCategoryMenu(plugin, player).open());
+            return;
+        }
         if (slot == SLOT_PREV && page > 0) {
             page--;
             plugin.click(player);
