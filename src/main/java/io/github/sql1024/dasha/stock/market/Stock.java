@@ -18,6 +18,8 @@ public final class Stock {
     private final double minPrice;
     private final double maxPrice;
     private final int historyPoints;
+    /** Ticker on the real exchange, or {@code null} for a purely fictional stock. */
+    private final String realSymbol;
 
     private final List<Double> history = new ArrayList<>();
 
@@ -28,6 +30,13 @@ public final class Stock {
     private double dayOpen;
     private String dayKey = "";
 
+    /** News-driven premium in hybrid mode, as a fraction of the real price. Decays each tick. */
+    private double newsOverlay;
+    /** Whether the real exchange behind this stock is currently trading. */
+    private boolean marketOpen = true;
+    /** Last real quote seen, before currency conversion. */
+    private double realPrice;
+
     public Stock(String symbol,
                  String displayName,
                  Material icon,
@@ -36,7 +45,8 @@ public final class Stock {
                  double drift,
                  double minPrice,
                  double maxPrice,
-                 int historyPoints) {
+                 int historyPoints,
+                 String realSymbol) {
         this.symbol = symbol;
         this.displayName = displayName;
         this.icon = icon;
@@ -46,6 +56,7 @@ public final class Stock {
         this.minPrice = minPrice;
         this.maxPrice = maxPrice;
         this.historyPoints = Math.max(2, historyPoints);
+        this.realSymbol = realSymbol == null || realSymbol.isBlank() ? null : realSymbol.trim();
         this.price = clamp(initialPrice);
         this.previousPrice = this.price;
     }
@@ -72,6 +83,38 @@ public final class Stock {
 
     public double drift() {
         return drift;
+    }
+
+    /** Ticker on the real exchange, or {@code null} when this stock is not tracking anything. */
+    public String realSymbol() {
+        return realSymbol;
+    }
+
+    /** Extra premium or discount that in-game news is currently applying, as a fraction. */
+    public double newsOverlay() {
+        return newsOverlay;
+    }
+
+    public void setNewsOverlay(double overlay) {
+        this.newsOverlay = Double.isFinite(overlay) ? overlay : 0.0;
+    }
+
+    /** Whether the real market behind this stock is trading right now. */
+    public boolean marketOpen() {
+        return marketOpen;
+    }
+
+    public void setMarketOpen(boolean open) {
+        this.marketOpen = open;
+    }
+
+    /** Last real quote applied, in the exchange's own currency. Zero when never fetched. */
+    public double realPrice() {
+        return realPrice;
+    }
+
+    public void setRealPrice(double realPrice) {
+        this.realPrice = realPrice;
     }
 
     public double minPrice() {

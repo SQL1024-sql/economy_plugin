@@ -26,6 +26,57 @@
 # ============================================================
 
 market:
+  # ------------------------------------------------------------
+  #  價格來源
+  #
+  #  real      跟著真實股市跑。新聞不再影響股價 —— 假新聞推不動蘋果的
+  #            真實報價，所以新聞系統在這個模式下只是裝飾。
+  #  simulated 原本的模式：隨機漫步 + 新聞驅動，完全不連外。
+  #  hybrid    以真實價格為基準，新聞在上面疊一層會衰減的溢價。
+  #            現實與機制兩者都保留，而且那層額外波動會讓「看真實
+  #            報價、搶在插件更新前下單」這種套利沒那麼穩賺。
+  #
+  #  ⚠ 選 real 或 hybrid 之前一定要知道的事
+  #  真實價格代表玩家可以用手機看到未來 —— 他先看到 NVDA real time
+  #  漲 5%，而插件下一次更新還沒到，那就是穩賺。這比原本的新聞機制
+  #  危險得多。緩解方式：把 update-interval-seconds 調短、保留手續費
+  #  與持股上限、或改用 hybrid 讓價格沒那麼容易預測。
+  # ------------------------------------------------------------
+  price-source: real
+
+  real:
+    # 多久抓一次真實報價（秒）。越短越即時，但對免費來源越不客氣。
+    update-interval-seconds: 180
+    # 單一請求逾時（秒）
+    request-timeout-seconds: 10
+    # 每檔之間間隔幾毫秒，避免被來源限流
+    stagger-millis: 200
+    # 該市場休市時是否凍結價格（只影響 real 模式）
+    freeze-when-closed: true
+    # 休市時的微幅隨機波動（%）。設 0 就是完全不動。
+    # 給夜間玩家一點東西看，但不假裝真實市場有在動。
+    closed-drift-percent: 0.0
+    # 抓不到報價時是否退回模擬價格。關掉的話價格就直接不動。
+    fallback-to-simulated: true
+    # hybrid 模式下，新聞溢價每次更新保留多少（0.5 = 每次砍半）
+    news-overlay-decay: 0.5
+
+    # ----------------------------------------------------------
+    #  匯率：一單位外幣等於多少大沙幣
+    #
+    #  沒有這個，三星 247500 韓元會看起來比耐吉 40 美元貴六千倍，
+    #  純粹因為單位不同。這是讓整個盤面可以互相比較的東西。
+    #  想讓股價整體變便宜，就把所有數字等比例調小。
+    # ----------------------------------------------------------
+    currency-rates:
+      USD: 1.0
+      TWD: 0.031
+      JPY: 0.0064
+      KRW: 0.00072
+      HKD: 0.128
+      EUR: 1.08
+      GBP: 1.27
+
   # 每隔幾秒更新一次股價（一次更新 = 一根 K 棒）
   update-interval-seconds: 300
   # 單次更新最大漲跌幅（%），防止價格暴衝
@@ -170,101 +221,650 @@ indicators:
 #    嫌太貴就把 initial-price 跟 min/max 一起等比例調小。
 # ------------------------------------------------------------
 stocks:
+#
+#  real-symbol 就是去真實市場抓價用的代號（Yahoo Finance 格式）：
+#    美股      直接寫代號          AAPL
+#    台股      代號 + .TW          2330.TW
+#    日股      代號 + .T           7203.T
+#    韓股      代號 + .KS          005930.KS
+#    港股      代號 + .HK          0700.HK
+#    加密貨幣  幣別 + -USD         BTC-USD
+#    指數      ^ 開頭              ^GSPC
+#
+#  把 real-symbol 拿掉，那檔就變回純模擬（不連外）。
+#  initial-price 只在第一次啟動、還沒抓到報價時用得到。
+
   # ---------------- 美股 ----------------
   AAPL:
     display-name: '<white>蘋果 <gray>Apple'
+    real-symbol: 'AAPL'
     icon: APPLE
-    initial-price: 232.0
-    volatility: 0.035
-    drift: 0.0006
-    min-price: 60.0
-    max-price: 1200.0
-  NVDA:
-    display-name: '<green>輝達 <gray>NVIDIA'
-    icon: COMPARATOR
-    initial-price: 178.0
-    volatility: 0.065
-    drift: 0.0012
-    min-price: 40.0
-    max-price: 1600.0
-  TSLA:
-    display-name: '<red>特斯拉 <gray>Tesla'
-    icon: MINECART
-    initial-price: 340.0
-    volatility: 0.075
-    drift: 0.0004
-    min-price: 70.0
-    max-price: 2400.0
+    initial-price: 310.03
+    volatility: 0.03
+    drift: 0.0
+    min-price: 15.50
+    max-price: 6200.60
   MSFT:
     display-name: '<aqua>微軟 <gray>Microsoft'
+    real-symbol: 'MSFT'
     icon: GLASS
-    initial-price: 505.0
-    volatility: 0.033
-    drift: 0.0007
-    min-price: 130.0
-    max-price: 2600.0
+    initial-price: 481.63
+    volatility: 0.028
+    drift: 0.0
+    min-price: 24.08
+    max-price: 9632.60
+  NVDA:
+    display-name: '<green>輝達 <gray>NVIDIA'
+    real-symbol: 'NVDA'
+    icon: COMPARATOR
+    initial-price: 219.74
+    volatility: 0.055
+    drift: 0.0
+    min-price: 10.99
+    max-price: 4394.80
   GOOGL:
     display-name: '<yellow>Alphabet <gray>Google'
+    real-symbol: 'GOOGL'
     icon: SPYGLASS
-    initial-price: 195.0
-    volatility: 0.040
-    drift: 0.0006
-    min-price: 50.0
-    max-price: 1100.0
+    initial-price: 344.20
+    volatility: 0.033
+    drift: 0.0
+    min-price: 17.21
+    max-price: 6884.00
   AMZN:
     display-name: '<gold>亞馬遜 <gray>Amazon'
+    real-symbol: 'AMZN'
     icon: CHEST
-    initial-price: 225.0
+    initial-price: 259.45
+    volatility: 0.038
+    drift: 0.0
+    min-price: 12.97
+    max-price: 5189.00
+  META:
+    display-name: '<blue>Meta <gray>Facebook'
+    real-symbol: 'META'
+    icon: ENDER_EYE
+    initial-price: 543.67
+    volatility: 0.042
+    drift: 0.0
+    min-price: 27.18
+    max-price: 10873.40
+  TSLA:
+    display-name: '<red>特斯拉 <gray>Tesla'
+    real-symbol: 'TSLA'
+    icon: MINECART
+    initial-price: 336.87
+    volatility: 0.065
+    drift: 0.0
+    min-price: 16.84
+    max-price: 6737.40
+  AVGO:
+    display-name: '<dark_aqua>博通 <gray>Broadcom'
+    real-symbol: 'AVGO'
+    icon: REDSTONE_TORCH
+    initial-price: 380.00
     volatility: 0.045
-    drift: 0.0006
-    min-price: 55.0
-    max-price: 1300.0
+    drift: 0.0
+    min-price: 19.00
+    max-price: 7600.00
+  ORCL:
+    display-name: '<red>甲骨文 <gray>Oracle'
+    real-symbol: 'ORCL'
+    icon: BOOKSHELF
+    initial-price: 142.79
+    volatility: 0.04
+    drift: 0.0
+    min-price: 7.14
+    max-price: 2855.80
+  AMD:
+    display-name: '<dark_red>超微 <gray>AMD'
+    real-symbol: 'AMD'
+    icon: REPEATER
+    initial-price: 484.39
+    volatility: 0.055
+    drift: 0.0
+    min-price: 24.22
+    max-price: 9687.80
+  INTC:
+    display-name: '<blue>英特爾 <gray>Intel'
+    real-symbol: 'INTC'
+    icon: LIGHT_BLUE_GLAZED_TERRACOTTA
+    initial-price: 96.69
+    volatility: 0.05
+    drift: 0.0
+    min-price: 4.83
+    max-price: 1933.70
+  CRM:
+    display-name: '<aqua>賽富時 <gray>Salesforce'
+    real-symbol: 'CRM'
+    icon: PAPER
+    initial-price: 196.14
+    volatility: 0.04
+    drift: 0.0
+    min-price: 9.81
+    max-price: 3922.80
+  ADBE:
+    display-name: '<red>Adobe'
+    real-symbol: 'ADBE'
+    icon: PAINTING
+    initial-price: 263.14
+    volatility: 0.04
+    drift: 0.0
+    min-price: 13.16
+    max-price: 5262.80
+  NFLX:
+    display-name: '<dark_red>網飛 <gray>Netflix'
+    real-symbol: 'NFLX'
+    icon: JUKEBOX
+    initial-price: 77.77
+    volatility: 0.045
+    drift: 0.0
+    min-price: 3.89
+    max-price: 1555.40
+  CSCO:
+    display-name: '<aqua>思科 <gray>Cisco'
+    real-symbol: 'CSCO'
+    icon: REDSTONE
+    initial-price: 111.61
+    volatility: 0.028
+    drift: 0.0
+    min-price: 5.58
+    max-price: 2232.20
+  QCOM:
+    display-name: '<blue>高通 <gray>Qualcomm'
+    real-symbol: 'QCOM'
+    icon: DAYLIGHT_DETECTOR
+    initial-price: 160.19
+    volatility: 0.042
+    drift: 0.0
+    min-price: 8.01
+    max-price: 3203.80
+  IBM:
+    display-name: '<gray>IBM'
+    real-symbol: 'IBM'
+    icon: IRON_BLOCK
+    initial-price: 232.67
+    volatility: 0.028
+    drift: 0.0
+    min-price: 11.63
+    max-price: 4653.40
+  UBER:
+    display-name: '<white>優步 <gray>Uber'
+    real-symbol: 'UBER'
+    icon: MINECART
+    initial-price: 74.66
+    volatility: 0.045
+    drift: 0.0
+    min-price: 3.73
+    max-price: 1493.20
+  PLTR:
+    display-name: '<dark_purple>Palantir'
+    real-symbol: 'PLTR'
+    icon: ENDER_PEARL
+    initial-price: 171.54
+    volatility: 0.07
+    drift: 0.0
+    min-price: 8.58
+    max-price: 3430.80
+  ASML:
+    display-name: '<light_purple>艾司摩爾 <gray>ASML'
+    real-symbol: 'ASML'
+    icon: BEACON
+    initial-price: 1802.98
+    volatility: 0.045
+    drift: 0.0
+    min-price: 90.15
+    max-price: 36059.60
+  JPM:
+    display-name: '<gold>摩根大通 <gray>JPMorgan'
+    real-symbol: 'JPM'
+    icon: GOLD_INGOT
+    initial-price: 363.25
+    volatility: 0.03
+    drift: 0.0
+    min-price: 18.16
+    max-price: 7265.00
+  V:
+    display-name: '<blue>Visa'
+    real-symbol: 'V'
+    icon: PAPER
+    initial-price: 364.25
+    volatility: 0.026
+    drift: 0.0
+    min-price: 18.21
+    max-price: 7285.00
+  MA:
+    display-name: '<gold>萬事達 <gray>Mastercard'
+    real-symbol: 'MA'
+    icon: GOLD_NUGGET
+    initial-price: 574.31
+    volatility: 0.026
+    drift: 0.0
+    min-price: 28.72
+    max-price: 11486.20
+  BRK-B:
+    display-name: '<dark_green>波克夏 <gray>Berkshire'
+    real-symbol: 'BRK-B'
+    icon: EMERALD_BLOCK
+    initial-price: 502.96
+    volatility: 0.022
+    drift: 0.0
+    min-price: 25.15
+    max-price: 10059.20
+  WMT:
+    display-name: '<blue>沃爾瑪 <gray>Walmart'
+    real-symbol: 'WMT'
+    icon: BARREL
+    initial-price: 115.20
+    volatility: 0.024
+    drift: 0.0
+    min-price: 5.76
+    max-price: 2304.00
+  COST:
+    display-name: '<red>好市多 <gray>Costco'
+    real-symbol: 'COST'
+    icon: SHULKER_BOX
+    initial-price: 961.35
+    volatility: 0.026
+    drift: 0.0
+    min-price: 48.07
+    max-price: 19227.00
+  JNJ:
+    display-name: '<white>嬌生 <gray>J&J'
+    real-symbol: 'JNJ'
+    icon: GLASS_BOTTLE
+    initial-price: 271.11
+    volatility: 0.02
+    drift: 0.0
+    min-price: 13.56
+    max-price: 5422.20
+  UNH:
+    display-name: '<aqua>聯合健康 <gray>UnitedHealth'
+    real-symbol: 'UNH'
+    icon: GOLDEN_APPLE
+    initial-price: 393.93
+    volatility: 0.035
+    drift: 0.0
+    min-price: 19.70
+    max-price: 7878.60
+  PG:
+    display-name: '<white>寶僑 <gray>P&G'
+    real-symbol: 'PG'
+    icon: SOUL_SAND
+    initial-price: 143.45
+    volatility: 0.02
+    drift: 0.0
+    min-price: 7.17
+    max-price: 2869.00
+  XOM:
+    display-name: '<dark_gray>艾克森美孚 <gray>Exxon'
+    real-symbol: 'XOM'
+    icon: COAL_BLOCK
+    initial-price: 165.56
+    volatility: 0.03
+    drift: 0.0
+    min-price: 8.28
+    max-price: 3311.20
+  KO:
+    display-name: '<red>可口可樂 <gray>Coca-Cola'
+    real-symbol: 'KO'
+    icon: POTION
+    initial-price: 88.82
+    volatility: 0.018
+    drift: 0.0
+    min-price: 4.44
+    max-price: 1776.40
+  PEP:
+    display-name: '<blue>百事 <gray>PepsiCo'
+    real-symbol: 'PEP'
+    icon: HONEY_BOTTLE
+    initial-price: 140.13
+    volatility: 0.018
+    drift: 0.0
+    min-price: 7.01
+    max-price: 2802.60
+  MCD:
+    display-name: '<gold>麥當勞 <gray>McDonald''s'
+    real-symbol: 'MCD'
+    icon: COOKED_BEEF
+    initial-price: 266.99
+    volatility: 0.02
+    drift: 0.0
+    min-price: 13.35
+    max-price: 5339.80
+  SBUX:
+    display-name: '<dark_green>星巴克 <gray>Starbucks'
+    real-symbol: 'SBUX'
+    icon: COCOA_BEANS
+    initial-price: 106.01
+    volatility: 0.03
+    drift: 0.0
+    min-price: 5.30
+    max-price: 2120.20
+  NKE:
+    display-name: '<white>耐吉 <gray>Nike'
+    real-symbol: 'NKE'
+    icon: LEATHER_BOOTS
+    initial-price: 40.06
+    volatility: 0.035
+    drift: 0.0
+    min-price: 2.00
+    max-price: 801.20
+  DIS:
+    display-name: '<blue>迪士尼 <gray>Disney'
+    real-symbol: 'DIS'
+    icon: FIREWORK_ROCKET
+    initial-price: 103.95
+    volatility: 0.032
+    drift: 0.0
+    min-price: 5.20
+    max-price: 2079.00
+  BA:
+    display-name: '<gray>波音 <gray>Boeing'
+    real-symbol: 'BA'
+    icon: ELYTRA
+    initial-price: 223.06
+    volatility: 0.045
+    drift: 0.0
+    min-price: 11.15
+    max-price: 4461.20
+  CAT:
+    display-name: '<yellow>開拓重工 <gray>Caterpillar'
+    real-symbol: 'CAT'
+    icon: IRON_PICKAXE
+    initial-price: 840.87
+    volatility: 0.03
+    drift: 0.0
+    min-price: 42.04
+    max-price: 16817.40
+  GS:
+    display-name: '<gold>高盛 <gray>Goldman Sachs'
+    real-symbol: 'GS'
+    icon: GOLD_BLOCK
+    initial-price: 1040.47
+    volatility: 0.032
+    drift: 0.0
+    min-price: 52.02
+    max-price: 20809.40
+  PFE:
+    display-name: '<blue>輝瑞 <gray>Pfizer'
+    real-symbol: 'PFE'
+    icon: BREWING_STAND
+    initial-price: 27.25
+    volatility: 0.028
+    drift: 0.0
+    min-price: 1.36
+    max-price: 545.00
+
   # ---------------- 台股 ----------------
   '2330':
     display-name: '<dark_aqua>台積電'
+    real-symbol: '2330.TW'
     icon: AMETHYST_SHARD
-    initial-price: 1120.0
-    volatility: 0.040
-    drift: 0.0009
-    min-price: 300.0
-    max-price: 6000.0
+    initial-price: 72.85
+    volatility: 0.035
+    drift: 0.0
+    min-price: 3.64
+    max-price: 1457.00
   '2317':
     display-name: '<gray>鴻海'
+    real-symbol: '2317.TW'
     icon: IRON_INGOT
-    initial-price: 215.0
-    volatility: 0.040
-    drift: 0.0005
-    min-price: 55.0
-    max-price: 1200.0
+    initial-price: 7.59
+    volatility: 0.035
+    drift: 0.0
+    min-price: 0.38
+    max-price: 151.90
   '2454':
     display-name: '<light_purple>聯發科'
+    real-symbol: '2454.TW'
     icon: REPEATER
-    initial-price: 1385.0
-    volatility: 0.055
-    drift: 0.0007
-    min-price: 350.0
-    max-price: 7500.0
-  '2603':
-    display-name: '<blue>長榮'
-    icon: OAK_BOAT
-    initial-price: 205.0
-    volatility: 0.070
-    drift: 0.0002
-    min-price: 40.0
-    max-price: 1500.0
+    initial-price: 119.19
+    volatility: 0.05
+    drift: 0.0
+    min-price: 5.96
+    max-price: 2383.90
+  '2308':
+    display-name: '<green>台達電'
+    real-symbol: '2308.TW'
+    icon: REDSTONE_LAMP
+    initial-price: 54.71
+    volatility: 0.035
+    drift: 0.0
+    min-price: 2.74
+    max-price: 1094.30
+  '2382':
+    display-name: '<aqua>廣達'
+    real-symbol: '2382.TW'
+    icon: OBSERVER
+    initial-price: 10.26
+    volatility: 0.045
+    drift: 0.0
+    min-price: 0.51
+    max-price: 205.22
   '2412':
     display-name: '<dark_green>中華電'
+    real-symbol: '2412.TW'
     icon: LIGHTNING_ROD
-    initial-price: 132.0
-    volatility: 0.018
-    drift: 0.0002
-    min-price: 60.0
-    max-price: 400.0
+    initial-price: 4.22
+    volatility: 0.015
+    drift: 0.0
+    min-price: 0.21
+    max-price: 84.32
+  '2603':
+    display-name: '<blue>長榮'
+    real-symbol: '2603.TW'
+    icon: OAK_BOAT
+    initial-price: 7.46
+    volatility: 0.06
+    drift: 0.0
+    min-price: 0.37
+    max-price: 149.11
+  '2881':
+    display-name: '<gold>富邦金'
+    real-symbol: '2881.TW'
+    icon: GOLD_NUGGET
+    initial-price: 3.98
+    volatility: 0.022
+    drift: 0.0
+    min-price: 0.20
+    max-price: 79.67
+  '2882':
+    display-name: '<yellow>國泰金'
+    real-symbol: '2882.TW'
+    icon: GOLD_INGOT
+    initial-price: 3.05
+    volatility: 0.022
+    drift: 0.0
+    min-price: 0.15
+    max-price: 60.95
+  '1301':
+    display-name: '<white>台塑'
+    real-symbol: '1301.TW'
+    icon: WHITE_CONCRETE
+    initial-price: 1.76
+    volatility: 0.025
+    drift: 0.0
+    min-price: 0.09
+    max-price: 35.22
+  '2002':
+    display-name: '<gray>中鋼'
+    real-symbol: '2002.TW'
+    icon: IRON_BLOCK
+    initial-price: 0.59
+    volatility: 0.022
+    drift: 0.0
+    min-price: 0.03
+    max-price: 11.75
+  '3008':
+    display-name: '<light_purple>大立光'
+    real-symbol: '3008.TW'
+    icon: SPYGLASS
+    initial-price: 172.05
+    volatility: 0.045
+    drift: 0.0
+    min-price: 8.60
+    max-price: 3441.00
   '0050':
     display-name: '<green>元大台灣50'
+    real-symbol: '0050.TW'
     icon: EMERALD
-    initial-price: 195.0
-    volatility: 0.022
-    drift: 0.0005
-    min-price: 70.0
-    max-price: 900.0
+    initial-price: 3.20
+    volatility: 0.02
+    drift: 0.0
+    min-price: 0.16
+    max-price: 63.92
+  '0056':
+    display-name: '<dark_green>元大高股息'
+    real-symbol: '0056.TW'
+    icon: EMERALD_BLOCK
+    initial-price: 1.61
+    volatility: 0.018
+    drift: 0.0
+    min-price: 0.08
+    max-price: 32.24
+
+  # ---------------- 日股 ----------------
+  '7203':
+    display-name: '<red>豐田 <gray>Toyota'
+    real-symbol: '7203.T'
+    icon: MINECART
+    initial-price: 18.82
+    volatility: 0.025
+    drift: 0.0
+    min-price: 0.94
+    max-price: 376.45
+  '6758':
+    display-name: '<dark_purple>索尼 <gray>Sony'
+    real-symbol: '6758.T'
+    icon: NOTE_BLOCK
+    initial-price: 23.61
+    volatility: 0.03
+    drift: 0.0
+    min-price: 1.18
+    max-price: 472.19
+  '9984':
+    display-name: '<yellow>軟銀 <gray>SoftBank'
+    real-symbol: '9984.T'
+    icon: ENDER_CHEST
+    initial-price: 33.45
+    volatility: 0.05
+    drift: 0.0
+    min-price: 1.67
+    max-price: 669.06
+  '6861':
+    display-name: '<aqua>基恩斯 <gray>Keyence'
+    real-symbol: '6861.T'
+    icon: OBSERVER
+    initial-price: 509.76
+    volatility: 0.03
+    drift: 0.0
+    min-price: 25.49
+    max-price: 10195.20
+
+  # ---------------- 韓股 ----------------
+  '005930':
+    display-name: '<blue>三星電子 <gray>Samsung'
+    real-symbol: '005930.KS'
+    icon: BLUE_ICE
+    initial-price: 178.20
+    volatility: 0.03
+    drift: 0.0
+    min-price: 8.91
+    max-price: 3564.00
+  '000660':
+    display-name: '<aqua>SK海力士 <gray>SK Hynix'
+    real-symbol: '000660.KS'
+    icon: PRISMARINE_CRYSTALS
+    initial-price: 1080.00
+    volatility: 0.045
+    drift: 0.0
+    min-price: 54.00
+    max-price: 21600.00
+
+  # ---------------- 港股 ----------------
+  '0700':
+    display-name: '<green>騰訊 <gray>Tencent'
+    real-symbol: '0700.HK'
+    icon: ENDER_EYE
+    initial-price: 57.24
+    volatility: 0.035
+    drift: 0.0
+    min-price: 2.86
+    max-price: 1144.83
+  '9988':
+    display-name: '<gold>阿里巴巴 <gray>Alibaba'
+    real-symbol: '9988.HK'
+    icon: CHEST_MINECART
+    initial-price: 15.90
+    volatility: 0.045
+    drift: 0.0
+    min-price: 0.79
+    max-price: 317.95
+  '1810':
+    display-name: '<yellow>小米 <gray>Xiaomi'
+    real-symbol: '1810.HK'
+    icon: REDSTONE_LAMP
+    initial-price: 3.51
+    volatility: 0.045
+    drift: 0.0
+    min-price: 0.18
+    max-price: 70.25
+
+  # ---------------- 加密貨幣 ----------------
+  BTC:
+    display-name: '<gold>比特幣 <gray>Bitcoin'
+    real-symbol: 'BTC-USD'
+    icon: GOLD_BLOCK
+    initial-price: 64929.99
+    volatility: 0.08
+    drift: 0.0
+    min-price: 3246.50
+    max-price: 1298599.80
+  ETH:
+    display-name: '<light_purple>以太幣 <gray>Ethereum'
+    real-symbol: 'ETH-USD'
+    icon: AMETHYST_BLOCK
+    initial-price: 1936.31
+    volatility: 0.09
+    drift: 0.0
+    min-price: 96.82
+    max-price: 38726.20
+
+  # ---------------- 指數 ----------------
+  SP500:
+    display-name: '<white>標普500 <gray>S&P 500'
+    real-symbol: '^GSPC'
+    icon: MAP
+    initial-price: 7691.76
+    volatility: 0.015
+    drift: 0.0
+    min-price: 384.59
+    max-price: 153835.20
+  NASDAQ:
+    display-name: '<aqua>那斯達克 <gray>NASDAQ'
+    real-symbol: '^IXIC'
+    icon: FILLED_MAP
+    initial-price: 26289.71
+    volatility: 0.02
+    drift: 0.0
+    min-price: 1314.49
+    max-price: 525794.20
+  TWII:
+    display-name: '<dark_aqua>台灣加權指數'
+    real-symbol: '^TWII'
+    icon: COMPASS
+    initial-price: 1386.30
+    volatility: 0.018
+    drift: 0.0
+    min-price: 69.31
+    max-price: 27726.00
+  N225:
+    display-name: '<red>日經225 <gray>Nikkei'
+    real-symbol: '^N225'
+    icon: RECOVERY_COMPASS
+    initial-price: 418.09
+    volatility: 0.02
+    drift: 0.0
+    min-price: 20.90
+    max-price: 8361.78

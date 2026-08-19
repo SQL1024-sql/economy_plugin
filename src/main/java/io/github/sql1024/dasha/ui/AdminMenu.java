@@ -35,6 +35,7 @@ public final class AdminMenu extends Gui {
     private static final int SLOT_NEWS_AUDIT = 30;
     private static final int SLOT_SETPRICE = 32;
     private static final int SLOT_TICK = 34;
+    private static final int SLOT_FEED = 20;
 
     private static final int SLOT_WALLET = 40;
     private static final int SLOT_RELOAD = 49;
@@ -84,6 +85,7 @@ public final class AdminMenu extends Gui {
                         : "<green>目前沒有在印鈔"));
 
         drawNewsToggle();
+        drawFeedStatus();
 
         inventory.setItem(SLOT_NEWS, icon(Material.PAPER, "<yellow>發布新聞",
                 "<gray>挑一檔股票發利多或利空。",
@@ -161,6 +163,56 @@ public final class AdminMenu extends Gui {
         inventory.setItem(SLOT_NEWS_TOGGLE, item);
     }
 
+    /** Live price feed health: source, freshness, and anything that failed to fetch. */
+    private void drawFeedStatus() {
+        var settings = plugin.settings();
+        java.util.List<String> lore = new java.util.ArrayList<>();
+        lore.add("<dark_gray>━━━━━━━━━━━━━━━");
+        lore.add("<gray>價格來源　<white>" + settings.priceSource());
+
+        if (!settings.priceSource().needsFeed()) {
+            lore.add("");
+            lore.add("<gray>目前是純模擬，不連外。");
+            lore.add("<dark_gray>改 stocks.yml 的 price-source 可切換。");
+            org.bukkit.inventory.ItemStack off = new org.bukkit.inventory.ItemStack(Material.MAP);
+            applyMeta(off, "<gray>即時報價：未使用", lore);
+            inventory.setItem(SLOT_FEED, off);
+            return;
+        }
+
+        var quotes = plugin.quotes();
+        long ago = quotes.lastRunAt() == 0L ? -1L
+                : (System.currentTimeMillis() - quotes.lastRunAt()) / 1000L;
+        boolean healthy = quotes.lastRunAt() != 0L && quotes.lastFailed() == 0;
+
+        lore.add("<gray>提供者　<white>" + quotes.provider().name());
+        lore.add("<gray>更新間隔　<white>" + settings.quoteIntervalSeconds() + "</white> 秒");
+        lore.add("");
+        if (ago < 0L) {
+            lore.add("<yellow>還沒完成第一次抓取");
+        } else {
+            lore.add("<gray>上次更新　<white>" + ago + "</white> 秒前");
+            lore.add("<gray>成功 <green>" + quotes.lastOk() + "</green>　失敗 "
+                    + (quotes.lastFailed() > 0 ? "<red>" : "<gray>") + quotes.lastFailed());
+        }
+
+        var failures = quotes.failures();
+        if (!failures.isEmpty()) {
+            lore.add("");
+            lore.add("<red>抓不到的代號：");
+            failures.entrySet().stream().limit(5).forEach(e ->
+                    lore.add("<dark_gray>  " + e.getKey() + " — " + e.getValue()));
+            lore.add("<dark_gray>失敗的會沿用上一次的價格，不會歸零。");
+        }
+        lore.add("");
+        lore.add("<yellow>▶ 點擊立刻重抓一次");
+
+        org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(
+                healthy ? Material.RECOVERY_COMPASS : Material.COMPASS);
+        applyMeta(item, healthy ? "<green><bold>即時報價：正常" : "<yellow><bold>即時報價：注意", lore);
+        inventory.setItem(SLOT_FEED, item);
+    }
+
     /** Coins players took off the market maker in the last week, net of fees. */
     private long stockNetFlow() {
         Map<TxnType, Long> totals =
@@ -233,6 +285,20 @@ public final class AdminMenu extends Gui {
             case SLOT_NEWS_AUDIT -> {
                 plugin.click(player);
                 showNewsAudit();
+            }
+            case SLOT_FEED -> {
+                plugin.click(player);
+                if (!plugin.settings().priceSource().needsFeed()) {
+                    player.sendMessage(Msg.prefixed("<gray>目前是純模擬模式，沒有即時報價可抓。"));
+                    return;
+                }
+                player.sendMessage(Msg.prefixed("<yellow>開始重抓即時報價…"));
+                plugin.quotes().refreshAsync(() -> {
+                    player.sendMessage(Msg.prefixed("<green>報價更新完成：成功 <white>"
+                            + plugin.quotes().lastOk() + "</white>　失敗 <white>"
+                            + plugin.quotes().lastFailed() + "</white>"));
+                    render();
+                });
             }
             case SLOT_TICK -> {
                 plugin.click(player);

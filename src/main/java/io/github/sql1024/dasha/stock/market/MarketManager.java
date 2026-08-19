@@ -75,7 +75,8 @@ public final class MarketManager {
                     Math.clamp(node.getDouble("drift", 0.0), -0.1, 0.1),
                     min,
                     max,
-                    settings.historyPoints());
+                    settings.historyPoints(),
+                    node.getString("real-symbol", null));
 
             double[] previous = carried.get(symbol);
             if (previous != null) {
@@ -115,16 +116,16 @@ public final class MarketManager {
     /** Advances every price by one step, persists the new state and announces big moves. */
     public void tick() {
         MarketSettings settings = plugin.settings();
-        double maxChange = settings.maxTickChangePercent() / 100.0;
         List<Stock> moved = new ArrayList<>(stocks.size());
 
         String dayKey = TradingDay.current();
         for (Stock stock : stocks.values()) {
-            double newsBias = plugin.news().biasFor(stock.symbol());
-            double factor = Math.exp(stock.drift() + newsBias + stock.volatility() * random.nextGaussian());
-            factor = Math.clamp(factor, 1.0 - maxChange, 1.0 + maxChange);
-            double candidate = stock.price() * factor;
-            stock.moveTo(stock.clampToDailyBand(candidate, dayKey, settings.dailyLimitPercent()));
+            double candidate = nextPrice(stock, settings, dayKey);
+            if (Double.isNaN(candidate)) {
+                // Real market shut and freezing is on: leave the price exactly where it is.
+                continue;
+            }
+            stock.moveTo(candidate);
             moved.add(stock);
         }
 
@@ -142,6 +143,73 @@ public final class MarketManager {
         plugin.news().maybePublish();
 
         plugin.menus().refreshOpenMenus();
+    }
+
+    /**
+     * The price this stock should move to, or {@link Double#NaN} to leave it untouched.
+     *
+     * <p>Three modes meet here. Simulation is the original random walk. Real mode copies the
+     * exchange, converted into 大沙幣. Hybrid takes the real price and applies a decaying premium
+     * that in-game news builds up, so a headline still moves the board without the price drifting
+     * away from reality for good.
+     */
+    private double nextPrice(Stock stock, MarketSettings settings, String dayKey) {
+        PriceSource source = settings.priceSource();
+
+        if (source.needsFeed() && stock.realSymbol() != null) {
+            var quote = plugin.quotes().quote(stock.realSymbol());
+            if (quote != null) {
+                stock.setMarketOpen(quote.open());
+                stock.setRealPrice(quote.price());
+
+                if (!quote.open() && settings.freezeWhenClosed() && source == PriceSource.REAL) {
+                    return Double.NaN;
+                }
+
+                double converted = quote.price() * settings.rateFor(quote.currency());
+                if (source == PriceSource.HYBRID) {
+                    converted *= 1.0 + advanceOverlay(stock, settings);
+                } else if (!quote.open() && settings.closedDriftPercent() > 0.0) {
+                    // A frozen board is dull; a whisper of drift keeps night play alive without
+                    // pretending the real market moved.
+                    double drift = settings.closedDriftPercent() / 100.0;
+                    converted *= 1.0 + random.nextGaussian() * drift;
+                }
+                return stock.clamp(converted);
+            }
+            if (!settings.fallbackToSimulated()) {
+                // No reading yet and no fallback allowed: better a stale price than a made-up one.
+                return Double.NaN;
+            }
+        }
+
+        return simulatedPrice(stock, settings, dayKey);
+    }
+
+    /** The original random walk, also used as the fallback when a live quote is missing. */
+    private double simulatedPrice(Stock stock, MarketSettings settings, String dayKey) {
+        double maxChange = settings.maxTickChangePercent() / 100.0;
+        double newsBias = settings.priceSource().newsMovesPrice()
+                ? plugin.news().biasFor(stock.symbol())
+                : 0.0;
+        double factor = Math.exp(stock.drift() + newsBias + stock.volatility() * random.nextGaussian());
+        factor = Math.clamp(factor, 1.0 - maxChange, 1.0 + maxChange);
+        return stock.clampToDailyBand(stock.price() * factor, dayKey, settings.dailyLimitPercent());
+    }
+
+    /**
+     * Moves the hybrid news premium one step and returns it.
+     *
+     * <p>News adds to the premium while it is running and the premium decays back towards zero
+     * once it stops, so a stock always returns to tracking its real price instead of drifting
+     * away from it permanently.
+     */
+    private double advanceOverlay(Stock stock, MarketSettings settings) {
+        double overlay = stock.newsOverlay() * settings.overlayDecay();
+        overlay += plugin.news().biasFor(stock.symbol());
+        overlay = Math.clamp(overlay, -0.9, 9.0);
+        stock.setNewsOverlay(overlay);
+        return overlay;
     }
 
     /** Admin override: jumps a price without a random step, but still records history. */

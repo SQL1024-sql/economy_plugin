@@ -41,6 +41,7 @@ import io.github.sql1024.dasha.stock.market.Stock;
 import io.github.sql1024.dasha.stock.news.NewsManager;
 import io.github.sql1024.dasha.stock.news.NewsSettings;
 import io.github.sql1024.dasha.stock.portfolio.PortfolioManager;
+import io.github.sql1024.dasha.stock.quote.QuoteService;
 import io.github.sql1024.dasha.stock.trade.TradeService;
 import io.github.sql1024.dasha.store.StoreCommand;
 import io.github.sql1024.dasha.store.StoreService;
@@ -91,6 +92,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
     private Database database;
     private EconomyService economy;
     private MarketManager market;
+    private QuoteService quotes;
     private NewsManager news;
     private PortfolioManager portfolios;
     private TradeService trades;
@@ -104,6 +106,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
     private BukkitTask tickTask;
     private BukkitTask expireTask;
     private BukkitTask saveTask;
+    private BukkitTask quoteTask;
 
     /** 玩家的上架流程狀態，去輸入價格再回來時要保住已選好的物品。 */
     private final Map<UUID, SellGui> sellSessions = new ConcurrentHashMap<>();
@@ -134,6 +137,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
         economy = new EconomyService(this);
         market = new MarketManager(this);
+        quotes = new QuoteService(this);
         news = new NewsManager(this);
         portfolios = new PortfolioManager(this);
         trades = new TradeService(this);
@@ -164,6 +168,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new GuiListener(this), this);
 
         startTicking();
+        startQuoteFeed();
         restartExpireTask();
         long autosave = tuning.autosaveTicks();
         saveTask = getServer().getScheduler().runTaskTimer(this, () -> {
@@ -184,7 +189,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        for (BukkitTask task : new BukkitTask[] {tickTask, expireTask, saveTask}) {
+        for (BukkitTask task : new BukkitTask[] {tickTask, expireTask, saveTask, quoteTask}) {
             if (task != null) {
                 task.cancel();
             }
@@ -192,6 +197,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         tickTask = null;
         expireTask = null;
         saveTask = null;
+        quoteTask = null;
 
         sellSessions.clear();
         chatPrompts.clear();
@@ -301,7 +307,10 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         market.loadStocks(stocksConfig, settings);
         restoreMarketState();
         news.pruneUnknownStocks();
+        quotes.pruneUnknown();
         startTicking();
+        startQuoteFeed();
+        startQuoteFeed();
         restartExpireTask();
         menus.refreshOpenMenus();
         guard.run();
@@ -340,6 +349,42 @@ public final class DashaEconomyPlugin extends JavaPlugin {
             if (history != null && !history.isEmpty() && stock.history().isEmpty()) {
                 stock.loadHistory(history);
             }
+        }
+    }
+
+    /**
+     * Keeps the live price feed refreshing while a real price source is selected.
+     *
+     * <p>Runs on its own timer rather than inside the market tick: fetching sixty tickers takes
+     * seconds, and the market must be free to advance on schedule regardless of how slow the
+     * provider is being. The first pass fires almost immediately so the board is not showing
+     * config placeholder prices when the first player logs in.
+     */
+    public void startQuoteFeed() {
+        if (quoteTask != null) {
+            quoteTask.cancel();
+            quoteTask = null;
+        }
+        if (!settings.priceSource().needsFeed()) {
+            return;
+        }
+        quotes.rebuildProvider();
+
+        long period = Math.max(20L, settings.quoteIntervalTicks());
+        quoteTask = getServer().getScheduler().runTaskTimer(this,
+                () -> quotes.refreshAsync(() -> menus.refreshOpenMenus()), 40L, period);
+
+        getLogger().info("即時股價已啟用（來源：" + quotes.provider().name()
+                + "，每 " + settings.quoteIntervalSeconds() + " 秒更新一次）。");
+
+        // A headline cannot move Apple's real quote. Saying so out loud beats letting players
+        // watch "利多 NVDA" scroll past while the price ignores it.
+        if (settings.priceSource() == io.github.sql1024.dasha.stock.market.PriceSource.REAL
+                && newsSettings.enabled()) {
+            getLogger().warning("price-source 是 real，但自動新聞還開著 —— "
+                    + "新聞不會影響真實股價，玩家會看到消息卻發現股價沒反應。");
+            getLogger().warning("想讓新聞真的有作用，把 price-source 改成 hybrid；"
+                    + "只想要純真實行情，就到管理面板關掉自動新聞。");
         }
     }
 
@@ -437,6 +482,10 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
     public MarketManager market() {
         return market;
+    }
+
+    public QuoteService quotes() {
+        return quotes;
     }
 
     public NewsManager news() {

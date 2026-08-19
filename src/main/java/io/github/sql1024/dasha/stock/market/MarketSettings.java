@@ -1,5 +1,10 @@
 package io.github.sql1024.dasha.stock.market;
 
+import java.util.LinkedHashMap;
+import java.util.Locale;
+import java.util.Map;
+
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
 
 /**
@@ -24,7 +29,16 @@ public record MarketSettings(
         int maxSharesPerStock,
         long maxCoinPerTransaction,
         String guiTitle,
-        int chartWidth) {
+        int chartWidth,
+        PriceSource priceSource,
+        long quoteTimeoutSeconds,
+        long quoteStaggerMillis,
+        boolean freezeWhenClosed,
+        boolean fallbackToSimulated,
+        double closedDriftPercent,
+        double overlayDecay,
+        long quoteIntervalSeconds,
+        Map<String, Double> currencyRates) {
 
     public static MarketSettings from(FileConfiguration config) {
         return new MarketSettings(
@@ -41,11 +55,55 @@ public record MarketSettings(
                 Math.max(1, config.getInt("limits.max-shares-per-stock", 1000)),
                 Math.max(1L, config.getLong("limits.max-coin-per-transaction", 500_000L)),
                 config.getString("gui.title", "<gradient:#f6d365:#fda085>大沙幣股市</gradient>"),
-                Math.clamp(config.getInt("gui.chart-width", 24), 4, 64));
+                Math.clamp(config.getInt("gui.chart-width", 24), 4, 64),
+                PriceSource.parse(config.getString("market.price-source"), PriceSource.SIMULATED),
+                Math.clamp(config.getLong("market.real.request-timeout-seconds", 10L), 1L, 60L),
+                Math.clamp(config.getLong("market.real.stagger-millis", 200L), 0L, 5000L),
+                config.getBoolean("market.real.freeze-when-closed", true),
+                config.getBoolean("market.real.fallback-to-simulated", true),
+                Math.clamp(config.getDouble("market.real.closed-drift-percent", 0.0), 0.0, 10.0),
+                Math.clamp(config.getDouble("market.real.news-overlay-decay", 0.5), 0.0, 1.0),
+                Math.max(30L, config.getLong("market.real.update-interval-seconds", 180L)),
+                readRates(config));
+    }
+
+    /**
+     * Exchange rates that turn a foreign quote into 大沙幣.
+     *
+     * <p>Without these a Korean stock quoted at 247,500 KRW would look six thousand times dearer
+     * than a US one at 40 USD, purely because of the unit. The rate is what makes the whole board
+     * comparable.
+     */
+    private static Map<String, Double> readRates(FileConfiguration config) {
+        Map<String, Double> rates = new LinkedHashMap<>();
+        ConfigurationSection section = config.getConfigurationSection("market.real.currency-rates");
+        if (section != null) {
+            for (String key : section.getKeys(false)) {
+                double rate = section.getDouble(key, 0.0);
+                if (rate > 0.0) {
+                    rates.put(key.toUpperCase(Locale.ROOT), rate);
+                }
+            }
+        }
+        rates.putIfAbsent("USD", 1.0);
+        return Map.copyOf(rates);
+    }
+
+    /** 大沙幣 per unit of {@code currency}; unknown currencies fall back to 1:1. */
+    public double rateFor(String currency) {
+        if (currency == null) {
+            return 1.0;
+        }
+        return currencyRates.getOrDefault(currency.toUpperCase(Locale.ROOT), 1.0);
     }
 
     public long updateIntervalTicks() {
         return updateIntervalSeconds * 20L;
+    }
+
+    /** How often the live price feed refreshes, in server ticks. */
+    public long quoteIntervalTicks() {
+        return quoteIntervalSeconds * 20L;
     }
 
     /** Average fee across both sides, for display where only one number fits. */

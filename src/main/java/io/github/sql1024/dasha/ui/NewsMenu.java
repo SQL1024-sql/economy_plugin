@@ -68,6 +68,21 @@ public final class NewsMenu extends Gui {
                     "<dark_gray>管理員仍可手動發布。"));
         }
 
+        if (plugin.settings().priceSource()
+                == io.github.sql1024.dasha.stock.market.PriceSource.REAL) {
+            inventory.setItem(SLOT_INFO, icon(Material.BOOK, "<white>新聞與股價",
+                    "<gray>本伺服器的股價<white>跟著真實股市</white>走。",
+                    "",
+                    "<yellow>所以這裡的新聞<red>不會</red>影響股價 —— ",
+                    "<gray>遊戲內的消息推不動真實市場的報價。",
+                    "<dark_gray>新聞在這個模式下只是氣氛。",
+                    "",
+                    "<gray>想知道股價為什麼動，去看真實世界的財經新聞。"));
+            inventory.setItem(SLOT_BACK, HubMenu.backButton());
+            fillEmpty(Material.BLACK_STAINED_GLASS_PANE);
+            return;
+        }
+
         inventory.setItem(SLOT_INFO, icon(Material.BOOK, "<white>新聞怎麼影響股價",
                 "<gray>新聞是<white>唯一</white>會推動股價的東西。",
                 "<gray>玩家買多買少完全不影響價格。",

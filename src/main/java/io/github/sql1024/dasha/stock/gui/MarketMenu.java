@@ -60,6 +60,7 @@ public final class MarketMenu extends StockMenu {
         lore.add("<gray>區間 <white>" + Fmt.price(stock.historyLow())
                 + "</white> ~ <white>" + Fmt.price(stock.historyHigh()));
         lore.add("<gray>走勢 " + Sparkline.render(stock.history(), plugin.settings().chartWidth()));
+        appendRealMarket(lore, stock);
 
         if (plugin.indicators().enabled()) {
             Indicators indicators = Indicators.of(stock, plugin.indicators());
@@ -94,6 +95,27 @@ public final class MarketMenu extends StockMenu {
 
         int amount = holding.shares() > 0 ? holding.shares() : 1;
         return Icons.of(stock.icon(), amount, stock.displayName() + " <dark_gray>[" + stock.symbol() + "]", lore);
+    }
+
+    /**
+     * Adds the live-market line: what this stock tracks and whether that exchange is open.
+     *
+     * <p>Worth its own line because a frozen price is otherwise indistinguishable from a broken
+     * feed — players seeing Toyota sit still for eight hours should be told Tokyo is shut, not
+     * left guessing.
+     */
+    private void appendRealMarket(java.util.List<String> lore, Stock stock) {
+        if (!plugin.settings().priceSource().needsFeed() || stock.realSymbol() == null) {
+            return;
+        }
+        var quote = plugin.quotes().quote(stock.realSymbol());
+        if (quote == null) {
+            lore.add("<dark_gray>連動 " + stock.realSymbol() + " <red>（尚未取得報價）");
+            return;
+        }
+        lore.add("<dark_gray>連動 " + stock.realSymbol() + " <dark_gray>| "
+                + Fmt.price(quote.price()) + " " + quote.currency()
+                + (quote.open() ? " <green>● 盤中" : " <gray>● 休市"));
     }
 
     @Override
