@@ -99,6 +99,11 @@ public final class NewsManager {
      */
     public void maybePublish() {
         NewsSettings settings = plugin.newsSettings();
+        if (!newsAffectsMarket()) {
+            // Prices come from a real exchange, so a headline has nothing to push. Publishing
+            // anyway would only teach players that the news board is noise.
+            return;
+        }
         if (!settings.enabled() || active.size() >= settings.maxActive()) {
             return;
         }
@@ -151,7 +156,9 @@ public final class NewsManager {
         persist();
 
         int haltSeconds = plugin.newsSettings().haltSeconds();
-        if (haltSeconds <= 0) {
+        // The halt exists to stop players front-running a price move. With real prices there is
+        // no move to front-run, so halting would freeze a stock for no reason a player can see.
+        if (!newsAffectsMarket() || haltSeconds <= 0) {
             broadcast(event, stock);
             return;
         }
@@ -200,7 +207,8 @@ public final class NewsManager {
                 : headline;
 
         plugin.database().logNewsAudit(adminUuid, adminName, stock.symbol(), published, clamped, text);
-        if (adminUuid != null && settings.insiderLockMinutes() > 0) {
+        // Same reasoning as the halt: nothing to trade ahead of when the price is not ours.
+        if (adminUuid != null && settings.insiderLockMinutes() > 0 && newsAffectsMarket()) {
             insiderUntil.put(insiderKey(adminUuid, stock.symbol()),
                     System.currentTimeMillis() + settings.insiderLockMinutes() * 60_000L);
         }
@@ -209,6 +217,11 @@ public final class NewsManager {
                 settings.durationUpdates(), System.currentTimeMillis());
         publishWithHalt(event, stock);
         return true;
+    }
+
+    /** Whether news can move prices at all under the configured price source. */
+    public boolean newsAffectsMarket() {
+        return plugin.settings().priceSource().newsMovesPrice();
     }
 
     // ------------------------------------------------------------------ 停牌與內線鎖

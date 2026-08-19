@@ -64,7 +64,7 @@ public final class StockPickMenu extends Gui {
     }
 
     private ItemStack stockIcon(Stock stock) {
-        boolean busy = plugin.news().hasNews(stock.symbol());
+        boolean busy = plugin.news().newsAffectsMarket() && plugin.news().hasNews(stock.symbol());
         List<String> lore = new ArrayList<>();
         lore.add("<dark_gray>━━━━━━━━━━━━━━━");
         lore.add("<gray>現價　<white>" + Fmt.price(stock.price()));

@@ -275,6 +275,11 @@ public final class StockCommand implements TabExecutor {
                     + "</white> 已經有一則新聞在跑，等它結束再發。"));
             return;
         }
+        if (!plugin.news().newsAffectsMarket()) {
+            sender.sendMessage(Lang.mini("<yellow>已廣播消息，但<red>不會影響股價</red> —— "
+                    + "本伺服器的股價跟著真實市場走。"));
+            return;
+        }
         sender.sendMessage(Lang.mini("<green>已發布新聞，<white>" + stock.symbol()
                 + "</white> 停牌 <white>" + plugin.newsSettings().haltSeconds() + "</white> 秒。"));
         if (adminUuid != null && plugin.newsSettings().insiderLockMinutes() > 0) {

@@ -377,14 +377,13 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         getLogger().info("即時股價已啟用（來源：" + quotes.provider().name()
                 + "，每 " + settings.quoteIntervalSeconds() + " 秒更新一次）。");
 
-        // A headline cannot move Apple's real quote. Saying so out loud beats letting players
-        // watch "利多 NVDA" scroll past while the price ignores it.
-        if (settings.priceSource() == io.github.sql1024.dasha.stock.market.PriceSource.REAL
-                && newsSettings.enabled()) {
-            getLogger().warning("price-source 是 real，但自動新聞還開著 —— "
-                    + "新聞不會影響真實股價，玩家會看到消息卻發現股價沒反應。");
-            getLogger().warning("想讓新聞真的有作用，把 price-source 改成 hybrid；"
-                    + "只想要純真實行情，就到管理面板關掉自動新聞。");
+        // With real prices a headline has nothing to push, so the whole news mechanic — the
+        // automatic roll, the trading halt and the insider lock — stays switched off rather
+        // than running as visible noise.
+        if (!settings.priceSource().newsMovesPrice()) {
+            getLogger().info("價格來源是 " + settings.priceSource()
+                    + "，財經新聞已停用（不自動發布、不停牌、不鎖內線）。");
+            getLogger().info("想讓新聞真的會推動股價，把 stocks.yml 的 price-source 改成 hybrid。");
         }
     }
 

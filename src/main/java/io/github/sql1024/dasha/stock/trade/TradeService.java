@@ -169,6 +169,11 @@ public final class TradeService {
      * still inside the insider cool-down.
      */
     private boolean tradable(Player player, Stock stock) {
+        if (!plugin.news().newsAffectsMarket()) {
+            // News cannot move a real quote, so neither of the guards below is protecting
+            // anything — leaving them on would just block trades for no visible reason.
+            return true;
+        }
         if (plugin.news().halted(stock.symbol())) {
             plugin.lang().send(player, "stock-halted",
                     "symbol", stock.symbol(),

@@ -87,14 +87,21 @@ public final class AdminMenu extends Gui {
         drawNewsToggle();
         drawFeedStatus();
 
-        inventory.setItem(SLOT_NEWS, icon(Material.PAPER, "<yellow>發布新聞",
-                "<gray>挑一檔股票發利多或利空。",
-                "",
-                "<red>會觸發停牌 " + plugin.newsSettings().haltSeconds() + " 秒，",
-                "<red>而且你自己 " + plugin.newsSettings().insiderLockMinutes()
-                        + " 分鐘內不能交易那檔。",
-                "<dark_gray>全部寫入稽核紀錄。",
-                "", "<yellow>▶ 點擊選股票"));
+        inventory.setItem(SLOT_NEWS, plugin.news().newsAffectsMarket()
+                ? icon(Material.PAPER, "<yellow>發布新聞",
+                        "<gray>挑一檔股票發利多或利空。",
+                        "",
+                        "<red>會觸發停牌 " + plugin.newsSettings().haltSeconds() + " 秒，",
+                        "<red>而且你自己 " + plugin.newsSettings().insiderLockMinutes()
+                                + " 分鐘內不能交易那檔。",
+                        "<dark_gray>全部寫入稽核紀錄。",
+                        "", "<yellow>▶ 點擊選股票")
+                : icon(Material.GRAY_DYE, "<gray>發布新聞 <dark_gray>（純廣播）",
+                        "<gray>股價跟著真實市場，這則消息",
+                        "<red>不會影響任何價格</red><gray>，只是廣播文字。",
+                        "",
+                        "<dark_gray>玩家若當真去下單，只會白付手續費。",
+                        "", "<yellow>▶ 仍要發布就點擊"));
 
         inventory.setItem(SLOT_NEWS_AUDIT, icon(Material.BOOK, "<yellow>新聞稽核紀錄",
                 "<gray>誰、何時、對哪檔、什麼方向。",
@@ -135,6 +142,23 @@ public final class AdminMenu extends Gui {
      * worse for players than letting the last story play out.
      */
     private void drawNewsToggle() {
+        if (!plugin.news().newsAffectsMarket()) {
+            org.bukkit.inventory.ItemStack inert =
+                    new org.bukkit.inventory.ItemStack(Material.STRUCTURE_VOID);
+            applyMeta(inert, "<dark_gray><bold>財經新聞：不適用", java.util.List.of(
+                    "<dark_gray>━━━━━━━━━━━━━━━",
+                    "<gray>價格來源是 <white>" + plugin.settings().priceSource() + "</white>，",
+                    "<gray>股價完全跟著真實市場走。",
+                    "",
+                    "<gray>新聞推不動真實報價，所以整套機制",
+                    "<gray>已經停用：不自動發布、不停牌、不鎖內線。",
+                    "",
+                    "<yellow>想讓新聞真的會推動股價，",
+                    "<yellow>把 stocks.yml 的 price-source 改成 hybrid。"));
+            inventory.setItem(SLOT_NEWS_TOGGLE, inert);
+            return;
+        }
+
         boolean on = plugin.newsSettings().enabled();
         int active = plugin.news().active().size();
 

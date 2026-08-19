@@ -86,6 +86,20 @@ public final class NewsComposeMenu extends Gui {
         applyMeta(headlineIcon, "<aqua>新聞標題", headlineLore);
         inventory.setItem(SLOT_HEADLINE, headlineIcon);
 
+        if (!plugin.news().newsAffectsMarket()) {
+            inventory.setItem(SLOT_CONFIRM, icon(Material.BELL, "<gray><bold>發布 <dark_gray>（純廣播）",
+                    "<gray>" + (direction > 0 ? "<green>利多" : "<red>利空")
+                            + " <white>" + stock.symbol() + "</white>",
+                    "",
+                    "<red>這則消息不會影響股價。",
+                    "<gray>本伺服器的股價跟著真實市場走。",
+                    "<dark_gray>只會廣播文字並寫進稽核紀錄。",
+                    "", "<yellow>▶ 點擊發布"));
+            inventory.setItem(SLOT_BACK, icon(Material.BARRIER, "<red>返回"));
+            fillEmpty(Material.BLACK_STAINED_GLASS_PANE);
+            return;
+        }
+
         inventory.setItem(SLOT_CONFIRM, icon(Material.BELL, "<gold><bold>發布",
                 "<gray>" + (direction > 0 ? "<green>利多" : "<red>利空")
                         + " <white>" + stock.symbol() + "</white> <gray>強度 " + strength,
@@ -173,6 +187,12 @@ public final class NewsComposeMenu extends Gui {
             return;
         }
         plugin.success(player);
+        if (!plugin.news().newsAffectsMarket()) {
+            player.sendMessage(Msg.prefixed("<yellow>已廣播消息，但<red>不會影響股價</red> —— "
+                    + "本伺服器的股價跟著真實市場走。"));
+            reopen(new AdminMenu(plugin, player));
+            return;
+        }
         player.sendMessage(Msg.prefixed("<green>已發布新聞，<white>" + stock.symbol()
                 + "</white> 停牌 <white>" + plugin.newsSettings().haltSeconds() + "</white> 秒。"));
         if (plugin.newsSettings().insiderLockMinutes() > 0) {
