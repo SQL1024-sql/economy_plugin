@@ -90,8 +90,9 @@ public final class StoreGui implements InventoryHolder {
                 concat(List.of(
                         "<gray>" + plugin.currency().displayName(),
                         "",
-                        "<yellow>左鍵 <gray>買 1　<yellow>Shift+左鍵 <gray>買 64",
-                        "<yellow>右鍵 <gray>買 一組(16)",
+                        "<yellow>左鍵 <gray>買 " + plugin.tuning().storeLeftClick()
+                                + "　<yellow>Shift+左鍵 <gray>買 " + plugin.tuning().storeShiftClick(),
+                        "<yellow>右鍵 <gray>買 " + plugin.tuning().storeRightClick(),
                         "",
                         "<dark_gray>分類（用 /store <名稱> 切換）"), tabs)));
 
@@ -111,15 +112,18 @@ public final class StoreGui implements InventoryHolder {
         ItemStack item = new ItemStack(entry.material());
         List<String> lore = new ArrayList<>();
         lore.add("<dark_gray>━━━━━━━━━━━━━━━");
-        lore.add("<gold>單價：<white>" + Fmt.coin(entry.price()) + "</white> <gray>大沙幣");
-        lore.add("<gray>一組 64 個：<white>" + Fmt.coin(entry.price() * 64));
+        lore.add("<gold>單價：<white>" + Fmt.coin(entry.price()) + "</white> <gray>"
+                + plugin.currency().displayName());
+        lore.add("<gray>" + plugin.tuning().storeShiftClick() + " 個：<white>"
+                + Fmt.coin(entry.price() * plugin.tuning().storeShiftClick()));
         if (!entry.note().isBlank()) {
             lore.add("<dark_gray>" + entry.note());
         }
         lore.add("");
         if (balance >= entry.price()) {
             lore.add("<gray>你買得起 <white>" + Fmt.coin(balance / entry.price()) + "</white> 個");
-            lore.add("<green>▶ 左鍵買 1　Shift+左鍵買 64");
+            lore.add("<green>▶ 左鍵買 " + plugin.tuning().storeLeftClick()
+                    + "　Shift+左鍵買 " + plugin.tuning().storeShiftClick());
         } else {
             lore.add("<red>✖ 大沙幣不足");
         }
@@ -163,10 +167,11 @@ public final class StoreGui implements InventoryHolder {
         }
 
         StoreSettings.Entry entry = shown.get(slot);
+        var tuning = plugin.tuning();
         int amount = switch (event.getClick()) {
-            case LEFT -> 1;
-            case SHIFT_LEFT -> 64;
-            case RIGHT -> 16;
+            case LEFT -> tuning.storeLeftClick();
+            case SHIFT_LEFT -> tuning.storeShiftClick();
+            case RIGHT -> tuning.storeRightClick();
             default -> 0;
         };
         if (amount <= 0) {

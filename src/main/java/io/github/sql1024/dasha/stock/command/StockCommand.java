@@ -221,7 +221,7 @@ public final class StockCommand implements TabExecutor {
                     + Fmt.price(holding.averageCost()) + "</white>　市值 <gold>"
                     + Fmt.gold(positionValue) + "</gold>　" + Fmt.pnlTag(positionValue - holding.invested())));
         }
-        lines.add(Lang.mini("<gray>合計市值 <gold>" + Fmt.gold(value) + "</gold> <gray>金錠　"
+        lines.add(Lang.mini("<gray>合計市值 <gold>" + Fmt.gold(value) + "</gold> <gray>" + plugin.currency().displayName() + "　"
                 + "投入 <gold>" + Fmt.gold(invested) + "</gold>　未實現 " + Fmt.pnlTag(value - invested)));
         sendLines(sender, lines);
     }
@@ -290,7 +290,7 @@ public final class StockCommand implements TabExecutor {
             plugin.lang().send(sender, "no-permission");
             return;
         }
-        List<Object[]> rows = plugin.database().recentNewsAudit(20);
+        List<Object[]> rows = plugin.database().recentNewsAudit(plugin.tuning().newsAuditEntries());
         sender.sendMessage(Lang.mini("<dark_gray>━━━━━━ <gold>新聞稽核紀錄</gold> <dark_gray>━━━━━━"));
         if (rows.isEmpty()) {
             sender.sendMessage(Lang.mini("<gray>目前沒有任何人工發布的新聞。"));
@@ -315,10 +315,10 @@ public final class StockCommand implements TabExecutor {
         if (!require(player, "dasha.stock")) {
             return;
         }
-        int limit = 10;
+        int limit = plugin.tuning().topDefault();
         if (args.length >= 2) {
             try {
-                limit = Math.clamp(Integer.parseInt(args[1]), 1, 50);
+                limit = Math.clamp(Integer.parseInt(args[1]), 1, plugin.tuning().topMax());
             } catch (NumberFormatException e) {
                 plugin.lang().send(sender, "invalid-number", "input", args[1]);
                 return;
@@ -337,7 +337,7 @@ public final class StockCommand implements TabExecutor {
             lines.add(Lang.mini("<dark_gray>" + STAMP.format(Instant.ofEpochMilli(record.timestamp()))
                     + " " + verb + "<reset> <white>" + record.shares() + "</white> 股 <gray>"
                     + record.symbol() + " <dark_gray>@ <white>" + Fmt.price(record.unitPrice())
-                    + "</white>　<gold>" + Fmt.gold(record.gold()) + "</gold> <gray>金錠"));
+                    + "</white>　<gold>" + Fmt.gold(record.gold()) + "</gold> <gray>" + plugin.currency().displayName() + ""));
         }
         sendLines(sender, lines);
     }
@@ -365,11 +365,11 @@ public final class StockCommand implements TabExecutor {
         lines.add(Lang.mini("<dark_gray>▬▬▬ <gold>持股市值排行<dark_gray> ▬▬▬"));
         int rank = 1;
         for (Entry entry : ranking) {
-            if (rank > 10) {
+            if (rank > plugin.tuning().topDefault()) {
                 break;
             }
             lines.add(Lang.mini("<gray>" + rank + ". <white>" + plugin.playerName(entry.uuid())
-                    + "</white>　<gold>" + Fmt.gold(entry.value()) + "</gold> <gray>金錠"));
+                    + "</white>　<gold>" + Fmt.gold(entry.value()) + "</gold> <gray>" + plugin.currency().displayName() + ""));
             rank++;
         }
         sendLines(sender, lines);

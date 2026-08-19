@@ -44,7 +44,8 @@ market:
   slippage-per-share: 0.00002
 
   # --- 防線 4：單日漲跌幅限制（%）---
-  # 股價一天之內最多離開「當日開盤價」這麼多。台北時間午夜重置。
+  # 股價一天之內最多離開「當日開盤價」這麼多。
+  # 換日時區看 config.yml 的 general.timezone。
   daily-limit-percent: 20.0
 
   # 每次更新後是否全服廣播漲跌摘要
@@ -92,8 +93,11 @@ news:
   accuracy-percent: 70.0
   # 一則新聞影響幾次股價更新
   duration-updates: 3
-  # 新聞的力道：實際偏移量 = 這個數字 × 該股波動率 × 隨機 0.6~1.4
+  # 新聞的力道：實際偏移量 = 這個數字 × 該股波動率 × 隨機抖動
   impact-multiplier: 0.7
+  # 隨機抖動的區間。同類新聞不會每次都一樣重，就是靠這個。
+  strength-jitter-min: 0.6
+  strength-jitter-max: 1.4
   # 同時最多存在幾則新聞
   max-active: 3
   # 是否全服廣播新聞
@@ -107,6 +111,16 @@ news:
   # 防內線交易：管理員用 /stock news 發布後，自己在這麼多分鐘內
   # 不能交易那檔股票。所有人工發布都會寫進稽核紀錄（/stock audit）。
   insider-lock-minutes: 10
+
+  # 人工發布新聞的「強度」刻度
+  #   max-strength      : 強度最大值（/stock news 的第三個參數上限）
+  #   default-strength  : GUI 擬稿時的預設強度
+  #   strength-midpoint : 換算基準。實際力道 = impact-multiplier × 波動率
+  #                       × (強度 ÷ 這個數字)，所以強度等於這個數字時
+  #                       力道剛好等於一則普通自動新聞。
+  max-strength: 5
+  default-strength: 3
+  strength-midpoint: 3.0
 
   headlines:
     bullish:

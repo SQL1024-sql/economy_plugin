@@ -150,10 +150,10 @@ public final class MarketMenu extends StockMenu {
         }
 
         switch (click) {
-            case LEFT -> plugin.trades().buy(viewer, stock, 1);
-            case SHIFT_LEFT -> plugin.trades().buy(viewer, stock, 10);
-            case RIGHT -> plugin.trades().sell(viewer, stock, 1);
-            case SHIFT_RIGHT -> plugin.trades().sell(viewer, stock, 10);
+            case LEFT -> plugin.trades().buy(viewer, stock, plugin.tuning().stockClickShares());
+            case SHIFT_LEFT -> plugin.trades().buy(viewer, stock, plugin.tuning().stockShiftShares());
+            case RIGHT -> plugin.trades().sell(viewer, stock, plugin.tuning().stockClickShares());
+            case SHIFT_RIGHT -> plugin.trades().sell(viewer, stock, plugin.tuning().stockShiftShares());
             case MIDDLE -> {
                 for (Component line : Report.stockInfo(plugin, stock, viewer.getUniqueId())) {
                     viewer.sendMessage(line);

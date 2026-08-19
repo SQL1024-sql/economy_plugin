@@ -19,6 +19,12 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param saleCutPercent       percentage of a completed sale the server destroys
  * @param minPrice             cheapest a listing may be
  * @param maxPrice             dearest a listing may be
+ * @param maxAmountPerListing  most items one listing may hold
+ * @param amountStep           items a plain click adds or removes in the sell screen
+ * @param amountStepShift      items a shift click adds or removes
+ * @param priceStep            大沙幣 a plain click adds or removes from the asking price
+ * @param priceStepShift       大沙幣 a shift click adds or removes
+ * @param referenceListings    comparable listings shown by the price-reference button
  */
 public record AuctionSettings(
         int maxListingsPerPlayer,
@@ -29,7 +35,13 @@ public record AuctionSettings(
         long listingFeeMin,
         double saleCutPercent,
         long minPrice,
-        long maxPrice) {
+        long maxPrice,
+        int maxAmountPerListing,
+        int amountStep,
+        int amountStepShift,
+        long priceStep,
+        long priceStepShift,
+        int referenceListings) {
 
     public static AuctionSettings from(FileConfiguration config) {
         return new AuctionSettings(
@@ -41,7 +53,13 @@ public record AuctionSettings(
                 Math.max(0L, config.getLong("auction.listing-fee-min", 1L)),
                 Math.clamp(config.getDouble("auction.sale-cut-percent", 5.0), 0.0, 50.0),
                 Math.max(1L, config.getLong("auction.min-price", 1L)),
-                Math.max(1L, config.getLong("auction.max-price", 100_000_000L)));
+                Math.max(1L, config.getLong("auction.max-price", 100_000_000L)),
+                Math.clamp(config.getInt("auction.max-amount-per-listing", 512), 1, 6912),
+                Math.max(1, config.getInt("auction.amount-step", 1)),
+                Math.max(1, config.getInt("auction.amount-step-shift", 8)),
+                Math.max(1L, config.getLong("auction.price-step", 10L)),
+                Math.max(1L, config.getLong("auction.price-step-shift", 100L)),
+                Math.clamp(config.getInt("auction.reference-listings", 5), 1, 20));
     }
 
     /** Non-refundable fee for putting an item up at {@code price}. */

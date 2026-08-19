@@ -27,8 +27,6 @@ import java.util.List;
  */
 public final class SellGui extends Gui {
 
-    public static final int MAX_AMOUNT = 512;
-
     private static final int SLOT_OFFER = 20;
     private static final int SLOT_OFFER_AMOUNT = 29;
     private static final int SLOT_PRICE = 24;
@@ -67,8 +65,8 @@ public final class SellGui extends Gui {
         return copy;
     }
 
-    private static int clamp(int amount) {
-        return Math.max(1, Math.min(MAX_AMOUNT, amount));
+    private int clamp(int amount) {
+        return Math.clamp(amount, 1, plugin.auctionSettings().maxAmountPerListing());
     }
 
     // ------------------------------------------------------------
@@ -115,8 +113,8 @@ public final class SellGui extends Gui {
                     "", "<yellow>▶ 點擊重新輸入價格"));
         }
         inventory.setItem(SLOT_PRICE_STEP, icon(Material.COMPARATOR, "<gold>快速調價",
-                "<gray>左鍵 <white>+10</white>　右鍵 <white>-10",
-                "<gray>Shift+左鍵 <white>+100</white>　Shift+右鍵 <white>-100",
+                "<gray>左鍵 <white>±" + settings.priceStep() + "</white>"
+                        + "　Shift+左鍵 <white>±" + settings.priceStepShift() + "</white>",
                 "<dark_gray>範圍 " + Fmt.coin(settings.minPrice()) + " ~ " + Fmt.coin(settings.maxPrice())));
 
         inventory.setItem(22, icon(Material.ARROW, "<yellow>換成大沙幣", "<gray>左邊給買家，右邊進你帳戶。"));
@@ -158,9 +156,9 @@ public final class SellGui extends Gui {
 
     private ItemStack amountButton(String title) {
         return icon(Material.COMPARATOR, title,
-                "<gray>左鍵 <white>+1</white>　右鍵 <white>-1",
-                "<gray>Shift+左鍵 <white>+8</white>　Shift+右鍵 <white>-8",
-                "<dark_gray>上限 " + MAX_AMOUNT + " 個");
+                "<gray>左鍵 <white>±" + plugin.auctionSettings().amountStep() + "</white>"
+                        + "　Shift+左鍵 <white>±" + plugin.auctionSettings().amountStepShift() + "</white>",
+                "<dark_gray>上限 " + plugin.auctionSettings().maxAmountPerListing() + " 個");
     }
 
     private int have(ItemStack template) {
@@ -277,7 +275,7 @@ public final class SellGui extends Gui {
                 .filter(listing -> listing.offer().isSimilar(offer))
                 .sorted(java.util.Comparator.comparingDouble(
                         io.github.sql1024.dasha.auction.Listing::unitPrice))
-                .limit(5)
+                .limit(plugin.auctionSettings().referenceListings())
                 .toList();
         if (matches.isEmpty()) {
             player.sendMessage(Msg.prefixed("<gray>目前沒有人賣 <white>" + Msg.itemName(offer) + "</white>，你是第一個。"));
@@ -291,22 +289,24 @@ public final class SellGui extends Gui {
         }
     }
 
-    private static int delta(ClickType click) {
+    private int delta(ClickType click) {
+        AuctionSettings settings = plugin.auctionSettings();
         return switch (click) {
-            case LEFT -> 1;
-            case RIGHT -> -1;
-            case SHIFT_LEFT -> 8;
-            case SHIFT_RIGHT -> -8;
+            case LEFT -> settings.amountStep();
+            case RIGHT -> -settings.amountStep();
+            case SHIFT_LEFT -> settings.amountStepShift();
+            case SHIFT_RIGHT -> -settings.amountStepShift();
             default -> 0;
         };
     }
 
-    private static long priceDelta(ClickType click) {
+    private long priceDelta(ClickType click) {
+        AuctionSettings settings = plugin.auctionSettings();
         return switch (click) {
-            case LEFT -> 10L;
-            case RIGHT -> -10L;
-            case SHIFT_LEFT -> 100L;
-            case SHIFT_RIGHT -> -100L;
+            case LEFT -> settings.priceStep();
+            case RIGHT -> -settings.priceStep();
+            case SHIFT_LEFT -> settings.priceStepShift();
+            case SHIFT_RIGHT -> -settings.priceStepShift();
             default -> 0L;
         };
     }

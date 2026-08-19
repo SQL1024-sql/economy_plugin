@@ -152,9 +152,10 @@ public final class EcoStats {
         return lines;
     }
 
-    private static String bar(double factor) {
-        int filled = (int) Math.round(Math.clamp(factor, 0.0, 1.0) * 10);
+    private String bar(double factor) {
+        int width = plugin.tuning().barWidth();
+        int filled = (int) Math.round(Math.clamp(factor, 0.0, 1.0) * width);
         String colour = factor > 0.75 ? "<green>" : factor > 0.45 ? "<yellow>" : "<red>";
-        return colour + "▉".repeat(filled) + "<dark_gray>" + "▉".repeat(10 - filled);
+        return colour + "▉".repeat(filled) + "<dark_gray>" + "▉".repeat(width - filled);
     }
 }

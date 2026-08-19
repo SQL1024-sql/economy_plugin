@@ -31,8 +31,6 @@ import org.sqlite.SQLiteDataSource;
  */
 public final class Database {
 
-    private static final int TRANSACTION_LOG_LIMIT = 20_000;
-
     private final DashaEconomyPlugin plugin;
     private final ExecutorService worker =
             Executors.newSingleThreadExecutor(task -> {
@@ -210,7 +208,7 @@ public final class Database {
                 WHERE id NOT IN (SELECT id FROM transactions ORDER BY id DESC LIMIT ?)
                 """;
         try (PreparedStatement statement = connection.prepareStatement(sql)) {
-            statement.setInt(1, TRANSACTION_LOG_LIMIT);
+            statement.setInt(1, plugin.tuning().txnLogLimit());
             statement.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().log(Level.WARNING, "整理交易紀錄時發生錯誤", e);
@@ -219,11 +217,12 @@ public final class Database {
 
     /** Waits for queued writes, then closes the connection. */
     public void close() {
+        long shutdownWaitSecs = plugin.tuning().shutdownWaitSecs();
         closed = true;
         worker.shutdown();
         try {
-            if (!worker.awaitTermination(15L, TimeUnit.SECONDS)) {
-                plugin.getLogger().warning("資料庫寫入未在 15 秒內完成，可能有資料未寫入。");
+            if (!worker.awaitTermination(shutdownWaitSecs, TimeUnit.SECONDS)) {
+                plugin.getLogger().warning("資料庫寫入未在 " + shutdownWaitSecs + " 秒內完成，可能有資料未寫入。");
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -455,7 +454,7 @@ public final class Database {
                     """;
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, uuid.toString());
-                statement.setInt(2, Math.clamp(limit, 1, 100));
+                statement.setInt(2, Math.clamp(limit, 1, plugin.tuning().queryLimit()));
                 try (ResultSet rows = statement.executeQuery()) {
                     while (rows.next()) {
                         result.add(new TxnRecord(
@@ -726,7 +725,7 @@ public final class Database {
                     FROM news_audit ORDER BY id DESC LIMIT ?
                     """;
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
-                statement.setInt(1, Math.clamp(limit, 1, 100));
+                statement.setInt(1, Math.clamp(limit, 1, plugin.tuning().queryLimit()));
                 try (ResultSet rows = statement.executeQuery()) {
                     while (rows.next()) {
                         result.add(new Object[] {
@@ -851,7 +850,7 @@ public final class Database {
 
     private <T> T read(String what, T fallback, Callable<T> task) {
         try {
-            return worker.submit(task).get(20L, TimeUnit.SECONDS);
+            return worker.submit(task).get(plugin.tuning().writeTimeoutSecs(), TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             return fallback;

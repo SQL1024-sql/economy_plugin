@@ -54,8 +54,10 @@ public final class AdminMenu extends Gui {
                 "<gray>本次開機產出　<green>+" + Fmt.coin(plugin.economy().mintedThisSession()),
                 "<gray>本次開機消耗　<red>-" + Fmt.coin(plugin.economy().burnedThisSession()),
                 "",
-                "<dark_gray>完整報告會印在聊天欄（近 7 天）",
-                "<yellow>▶ 左鍵 7 天　右鍵 30 天"));
+                "<dark_gray>完整報告會印在聊天欄（近 "
+                        + plugin.tuning().reportDefaultDays() + " 天）",
+                "<yellow>▶ 左鍵 " + plugin.tuning().reportDefaultDays()
+                        + " 天　右鍵 " + plugin.tuning().reportLongDays() + " 天"));
 
         inventory.setItem(SLOT_AUDIT, icon(Material.CRAFTING_TABLE, "<gold>反向通道檢查",
                 "<gray>掃描商店與收購清單之間",
@@ -71,7 +73,7 @@ public final class AdminMenu extends Gui {
 
         long stockNet = stockNetFlow();
         inventory.setItem(SLOT_LEDGER, icon(stockNet > 0 ? Material.REDSTONE_TORCH : Material.LEVER,
-                "<aqua>股市淨資金流 <dark_gray>(近 7 天)",
+                "<aqua>股市淨資金流 <dark_gray>(近 " + plugin.tuning().reportDefaultDays() + " 天)",
                 "<gray>" + Fmt.pnlTag(stockNet),
                 "",
                 "<dark_gray>玩家從做市商手上淨賺的錢",
@@ -123,7 +125,8 @@ public final class AdminMenu extends Gui {
     /** Coins players took off the market maker in the last week, net of fees. */
     private long stockNetFlow() {
         Map<TxnType, Long> totals =
-                plugin.database().ledgerTotals(System.currentTimeMillis() - 7L * 86_400_000L);
+                plugin.database().ledgerTotals(System.currentTimeMillis()
+                        - (long) plugin.tuning().reportDefaultDays() * 86_400_000L);
         return totals.getOrDefault(TxnType.STOCK_SELL, 0L)
                 - totals.getOrDefault(TxnType.STOCK_BUY, 0L)
                 - totals.getOrDefault(TxnType.STOCK_FEE, 0L);
@@ -149,7 +152,9 @@ public final class AdminMenu extends Gui {
             }
             case SLOT_STATS -> {
                 plugin.click(player);
-                int days = event.getClick().isRightClick() ? 30 : 7;
+                int days = event.getClick().isRightClick()
+                        ? plugin.tuning().reportLongDays()
+                        : plugin.tuning().reportDefaultDays();
                 later(() -> {
                     player.closeInventory();
                     for (Component line : plugin.stats().report(days)) {
@@ -223,7 +228,7 @@ public final class AdminMenu extends Gui {
     }
 
     private void showNewsAudit() {
-        List<Object[]> rows = plugin.database().recentNewsAudit(20);
+        List<Object[]> rows = plugin.database().recentNewsAudit(plugin.tuning().newsAuditEntries());
         later(() -> {
             player.closeInventory();
             player.sendMessage(Msg.mm("<dark_gray>━━━━━━ <gold>新聞稽核紀錄</gold> <dark_gray>━━━━━━"));

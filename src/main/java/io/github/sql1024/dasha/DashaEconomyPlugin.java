@@ -20,6 +20,8 @@ import io.github.sql1024.dasha.core.Database;
 import io.github.sql1024.dasha.core.EcoCommand;
 import io.github.sql1024.dasha.core.EconomyService;
 import io.github.sql1024.dasha.core.Lang;
+import io.github.sql1024.dasha.core.TradingDay;
+import io.github.sql1024.dasha.core.Tuning;
 import io.github.sql1024.dasha.guard.RecipeGuard;
 import io.github.sql1024.dasha.sell.OreSellService;
 import io.github.sql1024.dasha.sell.SellCommand;
@@ -69,6 +71,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
     // ---- 設定 ----
     private Currency currency;
+    private Tuning tuning;
     private MarketSettings settings;
     private NewsSettings newsSettings;
     private IndicatorSettings indicatorSettings;
@@ -159,10 +162,11 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
         startTicking();
         restartExpireTask();
+        long autosave = tuning.autosaveTicks();
         saveTask = getServer().getScheduler().runTaskTimer(this, () -> {
             auctions.saveIfDirty();
             economy.flush();
-        }, 20L * 60, 20L * 60);
+        }, autosave, autosave);
 
         // Run the arbitrage audit once the server has finished registering recipes.
         getServer().getScheduler().runTask(this, () -> guard.run());
@@ -244,6 +248,8 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         storeConfig = loadConfigFile("store.yml");
         messagesConfig = loadConfigFile("messages.yml");
 
+        tuning = Tuning.from(getConfig(), getLogger());
+        TradingDay.configure(tuning.timezone());
         currency = Currency.from(getConfig());
         settings = MarketSettings.from(stocksConfig);
         newsSettings = NewsSettings.from(stocksConfig);
@@ -302,6 +308,10 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
     public Currency currency() {
         return currency;
+    }
+
+    public Tuning tuning() {
+        return tuning;
     }
 
     public MarketSettings settings() {

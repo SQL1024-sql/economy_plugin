@@ -30,12 +30,13 @@ public final class NewsComposeMenu extends Gui {
 
     private final Stock stock;
     private int direction = 1;
-    private int strength = 3;
+    private int strength;
     private String headline = "";
 
     public NewsComposeMenu(DashaEconomyPlugin plugin, Player player, Stock stock) {
         super(plugin, player);
         this.stock = stock;
+        this.strength = plugin.newsSettings().defaultStrength();
         this.inventory = Bukkit.createInventory(this, 54,
                 Msg.mm("<yellow>發布新聞 <dark_gray>— " + stock.symbol()));
     }
@@ -63,8 +64,9 @@ public final class NewsComposeMenu extends Gui {
                 direction < 0 ? "<red>已選擇" : "<yellow>▶ 點擊選擇"));
 
         inventory.setItem(SLOT_STRENGTH, icon(Material.COMPARATOR,
-                "<gold>強度：<white>" + strength + " <dark_gray>/ 5",
-                "<gray>" + "★".repeat(strength) + "<dark_gray>" + "☆".repeat(5 - strength),
+                "<gold>強度：<white>" + strength + " <dark_gray>/ " + plugin.newsSettings().maxStrength(),
+                "<gray>" + "★".repeat(strength) + "<dark_gray>"
+                        + "☆".repeat(Math.max(0, plugin.newsSettings().maxStrength() - strength)),
                 "",
                 "<gray>影響幅度會乘上這檔的波動率，",
                 "<gray>持續 <white>" + plugin.newsSettings().durationUpdates() + "</white> 次股價更新。",
@@ -126,7 +128,8 @@ public final class NewsComposeMenu extends Gui {
                 render();
             }
             case SLOT_STRENGTH -> {
-                strength = Math.clamp(strength + (event.getClick().isRightClick() ? -1 : 1), 1, 5);
+                strength = Math.clamp(strength + (event.getClick().isRightClick() ? -1 : 1),
+                        1, plugin.newsSettings().maxStrength());
                 plugin.click(player);
                 render();
             }

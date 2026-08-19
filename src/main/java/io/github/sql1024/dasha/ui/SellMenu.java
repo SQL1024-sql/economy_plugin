@@ -119,7 +119,7 @@ public final class SellMenu extends Gui {
             lore.add("<gray>今日已賺　<white>" + Fmt.coin(used) + "</white> / " + Fmt.coin(quota));
             lore.add("<gray>剩餘　" + bar((double) left / quota) + " <yellow>" + Fmt.coin(left));
             lore.add("");
-            lore.add("<dark_gray>台北時間午夜重置。");
+            lore.add("<dark_gray>" + plugin.tuning().timezone() + " 午夜重置。");
             lore.add("<dark_gray>這是防掛機農場與分身帳號的上限。");
         }
         lore.add("");
@@ -140,10 +140,11 @@ public final class SellMenu extends Gui {
         return total;
     }
 
-    private static String bar(double factor) {
-        int filled = (int) Math.round(Math.clamp(factor, 0.0, 1.0) * 10);
+    private String bar(double factor) {
+        int width = plugin.tuning().barWidth();
+        int filled = (int) Math.round(Math.clamp(factor, 0.0, 1.0) * width);
         String colour = factor > 0.75 ? "<green>" : factor > 0.45 ? "<yellow>" : "<red>";
-        return colour + "▉".repeat(filled) + "<dark_gray>" + "▉".repeat(10 - filled);
+        return colour + "▉".repeat(filled) + "<dark_gray>" + "▉".repeat(width - filled);
     }
 
     @Override

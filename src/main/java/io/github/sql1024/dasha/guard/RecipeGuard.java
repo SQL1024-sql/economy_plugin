@@ -31,9 +31,6 @@ import org.bukkit.inventory.ShapelessRecipe;
  */
 public final class RecipeGuard {
 
-    /** How much more the store must charge than the scrap is worth, to leave no margin at all. */
-    private static final double SAFETY_FACTOR = 1.5;
-
     private final DashaEconomyPlugin plugin;
 
     public RecipeGuard(DashaEconomyPlugin plugin) {
@@ -56,16 +53,16 @@ public final class RecipeGuard {
             SellSettings.Item direct = sell.item(entry.material());
             if (direct != null) {
                 long value = direct.basePrice();
-                if (entry.price() < Math.round(value * SAFETY_FACTOR)) {
+                if (entry.price() < Math.round(value * plugin.tuning().guardSafetyFactor())) {
                     findings.add(new Finding(entry.material(), entry.price(), value,
-                            Math.round(value * SAFETY_FACTOR), "同時出現在收購清單"));
+                            Math.round(value * plugin.tuning().guardSafetyFactor()), "同時出現在收購清單"));
                 }
             }
 
             long scrap = scrapValue(entry.material(), sell);
-            if (scrap > 0L && entry.price() < Math.round(scrap * SAFETY_FACTOR)) {
+            if (scrap > 0L && entry.price() < Math.round(scrap * plugin.tuning().guardSafetyFactor())) {
                 findings.add(new Finding(entry.material(), entry.price(), scrap,
-                        Math.round(scrap * SAFETY_FACTOR), "可拆解成收購品"));
+                        Math.round(scrap * plugin.tuning().guardSafetyFactor()), "可拆解成收購品"));
             }
         }
 

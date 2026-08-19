@@ -126,7 +126,10 @@ public final class NewsManager {
                 .replace("{name}", stock.displayName())
                 .replace("{symbol}", stock.symbol());
 
-        double strength = 0.6 + random.nextDouble() * 0.8;
+        // Two headlines of the same kind should not land identically, so each roll
+        // picks a force somewhere inside the configured jitter band.
+        double span = Math.max(0.0, settings.jitterMax() - settings.jitterMin());
+        double strength = settings.jitterMin() + random.nextDouble() * span;
         double bias = settings.impactMultiplier() * stock.volatility() * strength;
 
         NewsEvent event = new NewsEvent(stock.symbol(), headline, published, actual, bias,
@@ -180,11 +183,12 @@ public final class NewsManager {
         }
         NewsSettings settings = plugin.newsSettings();
         int published = direction >= 0 ? 1 : -1;
-        int clamped = Math.clamp(strength, 1, 5);
+        int clamped = Math.clamp(strength, 1, settings.maxStrength());
 
         // Manual news is always truthful: an admin publishing a lie the market cannot detect is
         // indistinguishable from an admin quietly handing coins to whoever they told first.
-        double bias = settings.impactMultiplier() * stock.volatility() * (clamped / 3.0);
+        double bias = settings.impactMultiplier() * stock.volatility()
+                * (clamped / settings.strengthMidpoint());
 
         String text = headline == null || headline.isBlank()
                 ? (published > 0 ? settings.bullishHeadlines() : settings.bearishHeadlines())

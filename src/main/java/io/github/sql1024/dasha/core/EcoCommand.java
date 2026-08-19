@@ -100,10 +100,10 @@ public final class EcoCommand implements TabExecutor {
             plugin.lang().send(sender, "no-permission");
             return;
         }
-        int days = 7;
+        int days = plugin.tuning().reportDefaultDays();
         if (args.length > 1) {
             try {
-                days = Math.clamp(Integer.parseInt(args[1]), 1, 365);
+                days = Math.clamp(Integer.parseInt(args[1]), 1, plugin.tuning().reportMaxDays());
             } catch (NumberFormatException e) {
                 sender.sendMessage(Lang.mini("<red><white>" + args[1] + "</white> 不是有效的天數。"));
                 return;
@@ -119,12 +119,12 @@ public final class EcoCommand implements TabExecutor {
             plugin.lang().send(sender, "no-permission");
             return;
         }
-        int limit = 10;
+        int limit = plugin.tuning().topDefault();
         if (args.length > 1) {
             try {
-                limit = Math.clamp(Integer.parseInt(args[1]), 1, 50);
+                limit = Math.clamp(Integer.parseInt(args[1]), 1, plugin.tuning().topMax());
             } catch (NumberFormatException e) {
-                limit = 10;
+                limit = plugin.tuning().topDefault();
             }
         }
         for (Component line : plugin.stats().richList(limit)) {
