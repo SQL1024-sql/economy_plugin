@@ -15,6 +15,7 @@ import io.github.sql1024.dasha.auction.AuctionManager;
 import io.github.sql1024.dasha.auction.AuctionSettings;
 import io.github.sql1024.dasha.auction.GuiListener;
 import io.github.sql1024.dasha.auction.gui.SellGui;
+import io.github.sql1024.dasha.core.ConfigWriter;
 import io.github.sql1024.dasha.core.Currency;
 import io.github.sql1024.dasha.core.Database;
 import io.github.sql1024.dasha.core.EcoCommand;
@@ -312,6 +313,26 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
     public Tuning tuning() {
         return tuning;
+    }
+
+    /**
+     * Turns automatic financial news on or off and writes the choice to stocks.yml, so a toggle
+     * flipped in the admin panel survives a restart.
+     *
+     * <p>This only gates the automatic roll. An administrator can still publish a headline by hand
+     * with {@code /stock news} or the admin panel — which is the point: an operator running a
+     * scripted event wants the market quiet except for the news they choose.
+     *
+     * @return whether the setting was written
+     */
+    public boolean setNewsEnabled(boolean enabled) {
+        File file = new File(getDataFolder(), "stocks.yml");
+        if (!ConfigWriter.setBoolean(file, "news", "enabled", enabled, getLogger())) {
+            return false;
+        }
+        readSettings();
+        getLogger().info("自動財經新聞已" + (enabled ? "開啟" : "關閉") + "。");
+        return true;
     }
 
     public MarketSettings settings() {

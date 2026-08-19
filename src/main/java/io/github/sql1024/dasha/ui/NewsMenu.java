@@ -28,6 +28,7 @@ public final class NewsMenu extends Gui {
         19, 20, 21, 22, 23, 24, 25,
         28, 29, 30, 31, 32, 33, 34,
     };
+    private static final int SLOT_STATUS = 38;
     private static final int SLOT_INFO = 40;
     private static final int SLOT_BACK = 45;
 
@@ -50,9 +51,21 @@ public final class NewsMenu extends Gui {
             index++;
         }
         if (recent.isEmpty()) {
-            inventory.setItem(SLOTS[0], icon(Material.MAP, "<gray>目前沒有任何新聞",
-                    "<dark_gray>股價還是會隨機波動，",
-                    "<dark_gray>只是沒有方向性的消息在推。"));
+            inventory.setItem(SLOTS[0], plugin.newsSettings().enabled()
+                    ? icon(Material.MAP, "<gray>目前沒有任何新聞",
+                            "<dark_gray>股價還是會隨機波動，",
+                            "<dark_gray>只是沒有方向性的消息在推。")
+                    : icon(Material.BARRIER, "<red>自動新聞已關閉",
+                            "<gray>管理員把自動新聞停掉了，",
+                            "<gray>目前股價只剩隨機波動。",
+                            "<dark_gray>管理員仍可手動發布重大消息。"));
+        }
+
+        if (!plugin.newsSettings().enabled()) {
+            inventory.setItem(SLOT_STATUS, icon(Material.BARRIER, "<red>自動新聞：已關閉",
+                    "<gray>目前不會自動產生新聞，",
+                    "<gray>股價只剩隨機波動。",
+                    "<dark_gray>管理員仍可手動發布。"));
         }
 
         inventory.setItem(SLOT_INFO, icon(Material.BOOK, "<white>新聞怎麼影響股價",

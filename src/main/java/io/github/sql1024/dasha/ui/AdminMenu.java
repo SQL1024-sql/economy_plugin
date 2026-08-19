@@ -30,6 +30,7 @@ public final class AdminMenu extends Gui {
     private static final int SLOT_TOP = 14;
     private static final int SLOT_LEDGER = 16;
 
+    private static final int SLOT_NEWS_TOGGLE = 22;
     private static final int SLOT_NEWS = 28;
     private static final int SLOT_NEWS_AUDIT = 30;
     private static final int SLOT_SETPRICE = 32;
@@ -82,6 +83,8 @@ public final class AdminMenu extends Gui {
                         ? "<red>持續為正且大於挖礦收入 → 該收緊了"
                         : "<green>目前沒有在印鈔"));
 
+        drawNewsToggle();
+
         inventory.setItem(SLOT_NEWS, icon(Material.PAPER, "<yellow>發布新聞",
                 "<gray>挑一檔股票發利多或利空。",
                 "",
@@ -120,6 +123,42 @@ public final class AdminMenu extends Gui {
 
         inventory.setItem(SLOT_BACK, HubMenu.backButton());
         fillEmpty(Material.BLACK_STAINED_GLASS_PANE);
+    }
+
+    /**
+     * The automatic-news kill switch.
+     *
+     * <p>Switching it off stops new headlines from rolling; news already running finishes its
+     * course rather than being yanked, because a stock frozen mid-move with no explanation is
+     * worse for players than letting the last story play out.
+     */
+    private void drawNewsToggle() {
+        boolean on = plugin.newsSettings().enabled();
+        int active = plugin.news().active().size();
+
+        java.util.List<String> lore = new java.util.ArrayList<>();
+        lore.add("<dark_gray>━━━━━━━━━━━━━━━");
+        lore.add(on
+                ? "<green>● 開啟中 <dark_gray>— 每次股價更新有 "
+                        + plugin.newsSettings().chancePercent() + "% 機率發新聞"
+                : "<red>● 已關閉 <dark_gray>— 不會再自動產生新聞");
+        lore.add("");
+        lore.add("<gray>進行中的新聞：<white>" + active + "</white> 則");
+        if (!on && active > 0) {
+            lore.add("<dark_gray>已在跑的會自己跑完，不會硬中斷。");
+        }
+        lore.add("");
+        lore.add("<gray>關掉之後股價只剩隨機波動，");
+        lore.add("<gray>沒有任何方向性的消息在推。");
+        lore.add("<yellow>你仍然可以手動發新聞。");
+        lore.add("");
+        lore.add("<dark_gray>寫入 stocks.yml，重開伺服器後仍然有效。");
+        lore.add(on ? "<red>▶ 點擊關閉" : "<green>▶ 點擊開啟");
+
+        org.bukkit.inventory.ItemStack item = new org.bukkit.inventory.ItemStack(
+                on ? Material.LIME_DYE : Material.GRAY_DYE);
+        applyMeta(item, on ? "<green><bold>自動財經新聞：開" : "<red><bold>自動財經新聞：關", lore);
+        inventory.setItem(SLOT_NEWS_TOGGLE, item);
     }
 
     /** Coins players took off the market maker in the last week, net of fees. */
@@ -169,6 +208,19 @@ public final class AdminMenu extends Gui {
             case SLOT_TOP -> {
                 plugin.click(player);
                 reopen(new RichListMenu(plugin, player));
+            }
+            case SLOT_NEWS_TOGGLE -> {
+                boolean next = !plugin.newsSettings().enabled();
+                if (plugin.setNewsEnabled(next)) {
+                    plugin.success(player);
+                    player.sendMessage(Msg.prefixed(next
+                            ? "<green>自動財經新聞已<white>開啟</white>。"
+                            : "<yellow>自動財經新聞已<white>關閉</white>，手動發布仍然可用。"));
+                } else {
+                    plugin.fail(player);
+                    player.sendMessage(Msg.prefixed("<red>寫入 stocks.yml 失敗，詳見主控台。"));
+                }
+                render();
             }
             case SLOT_NEWS -> {
                 plugin.click(player);
