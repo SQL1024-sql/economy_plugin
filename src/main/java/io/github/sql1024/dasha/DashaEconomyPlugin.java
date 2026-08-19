@@ -2,8 +2,10 @@ package io.github.sql1024.dasha;
 
 import java.io.File;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -169,8 +171,11 @@ public final class DashaEconomyPlugin extends JavaPlugin {
             economy.flush();
         }, autosave, autosave);
 
-        // Run the arbitrage audit once the server has finished registering recipes.
-        getServer().getScheduler().runTask(this, () -> guard.run());
+        // Both of these need every other plugin to have finished loading, so they wait a tick.
+        getServer().getScheduler().runTask(this, () -> {
+            guard.run();
+            warnAboutCommandConflicts();
+        });
 
         getLogger().info("大沙幣經濟系統已啟動：" + market.size() + " 檔股票、"
                 + sellSettings.items().size() + " 種收購礦物、"
@@ -216,6 +221,65 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         }
         command.setExecutor(executor);
         command.setTabCompleter(executor);
+    }
+
+    /**
+     * Warns when another plugin has taken one of our command labels.
+     *
+     * <p>Bukkit hands a contested label to whichever plugin registered it first and silently sends
+     * the loser's command to the {@code plugin:command} form. From in-game that looks exactly like
+     * a broken permission — {@code /eco} answers, but with somebody else's help text, and even an
+     * operator appears unable to use it. {@code /eco}, {@code /money}, {@code /bal}, {@code /sell}
+     * and {@code /shop} all collide with EssentialsX, which most servers run, so this is the
+     * likeliest way the plugin looks broken while working perfectly.
+     *
+     * <p>Printing who won the label turns half an hour of confusion into one console line.
+     */
+    private void warnAboutCommandConflicts() {
+        List<String> problems = new ArrayList<>();
+        for (String name : List.of("eco", "stock", "ah", "store", "sell")) {
+            PluginCommand mine = getCommand(name);
+            if (mine == null) {
+                continue;
+            }
+
+            List<String> labels = new ArrayList<>();
+            labels.add(name);
+            labels.addAll(mine.getAliases());
+
+            List<String> stolen = new ArrayList<>();
+            List<String> survivors = new ArrayList<>();
+            String thief = null;
+            for (String label : labels) {
+                PluginCommand owner = getServer().getPluginCommand(label);
+                if (owner != null && owner != mine) {
+                    stolen.add("/" + label);
+                    thief = owner.getPlugin().getName();
+                } else if (owner == mine) {
+                    survivors.add("/" + label);
+                }
+            }
+            if (stolen.isEmpty()) {
+                continue;
+            }
+            problems.add(String.join("、", stolen) + " 被 " + thief + " 佔用"
+                    + (survivors.isEmpty()
+                            ? "，沒有可用的替代名稱，請改用 /" + getName().toLowerCase(Locale.ROOT) + ":" + name
+                            : "，請改打 " + survivors.get(0)));
+        }
+
+        if (problems.isEmpty()) {
+            return;
+        }
+        getLogger().warning("========================================================");
+        getLogger().warning("⚠ 有指令名稱被其他插件搶走了：");
+        for (String line : problems) {
+            getLogger().warning("  • " + line);
+        }
+        getLogger().warning("被搶走的指令打下去會跑到對方插件，看起來就像「沒權限」或「指令壞了」，");
+        getLogger().warning("連 OP 也一樣 —— 那不是權限問題，是名字撞到了。");
+        getLogger().warning("想拿回原本的名字，就在 plugin.yml 或伺服器的 commands.yml 調整別名。");
+        getLogger().warning("========================================================");
     }
 
     /** Writes a bundled config file out on first run, without clobbering an edited one. */

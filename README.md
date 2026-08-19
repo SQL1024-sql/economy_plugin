@@ -174,6 +174,43 @@ mvn package        # 需要 JDK 25
 
 ---
 
+## 疑難排解
+
+### 「連 OP 都不能用 /eco」
+
+**幾乎一定是指令撞名，不是權限問題。**
+
+`/eco`、`/money`、`/bal`、`/balance`、`/sell`、`/shop`、`/market` 這些都是 **EssentialsX**
+（以及不少商店插件）也會註冊的名字。同一個名字只有一個插件搶得到，輸的那個會被
+Bukkit 靜靜地丟到 `plugin:command` 形式，於是指令打下去有反應、卻是別人的插件在回話 ——
+看起來就跟沒權限一模一樣，而且 OP 也救不了，因為根本沒走到權限檢查。
+
+插件啟動時會自動偵測並在 console 印出來，例如：
+
+```
+⚠ 有指令名稱被其他插件搶走了：
+  • /eco 被 EssentialsX 佔用，請改打 /dasha
+  • /sell 被 EssentialsX 佔用，請改打 /sellore
+連 OP 也一樣 —— 那不是權限問題，是名字撞到了。
+```
+
+三種解法：
+
+1. **直接用還活著的別名** —— `/dasha`、`/sellore`。最省事
+2. **用完整名稱** —— `/dashaeconomy:eco`，一定有效
+3. **搶回名字** —— 改本插件 `plugin.yml` 的 `aliases`，或用伺服器的 `commands.yml` 重新指派
+
+### 真的是權限問題的話
+
+| 節點 | 預設 | 沒有它會怎樣 |
+|---|---|---|
+| `dasha.admin` | OP | 管理面板不出現，管理指令全部拒絕 |
+| `dasha.stock` / `dasha.market` / `dasha.store` / `dasha.sell` | 全開 | 對應的總管按鈕點下去說沒權限 |
+
+用 LuckPerms 的話注意：如果你把 `dasha.*` 設成 `false`，那會**蓋過** OP 身分。
+
+---
+
 ## 已知的取捨
 
 - **鐵/金/綠寶石預設不收購。** 一台鐵傀儡農場掛一晚的產量超過認真挖礦玩家一整個月，
