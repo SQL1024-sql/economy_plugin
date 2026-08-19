@@ -27,8 +27,15 @@ import com.google.gson.JsonParser;
  */
 public final class YahooQuoteProvider implements QuoteProvider {
 
+    /**
+     * {@code range=1d} is load-bearing, not a default.
+     *
+     * <p>{@code chartPreviousClose} is relative to the start of the requested window, so asking
+     * for five days makes it the close from five days ago and every "day change" comes out several
+     * points too large. One day is what makes the percentage match the one on a real ticker.
+     */
     private static final String ENDPOINT =
-            "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=5d";
+            "https://query1.finance.yahoo.com/v8/finance/chart/%s?interval=1d&range=1d";
 
     /** Yahoo answers plain programmatic clients with 403, so identify as a normal browser. */
     private static final String USER_AGENT =

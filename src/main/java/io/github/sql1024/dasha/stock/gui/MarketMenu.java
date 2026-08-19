@@ -55,8 +55,15 @@ public final class MarketMenu extends StockMenu {
         List<String> lore = new ArrayList<>();
         lore.add("<gray>代號 <white>" + stock.symbol());
         lore.add("<gray>現價 <white>" + Fmt.price(stock.price()) + "</white> " + currency + "<gray> / 股");
-        lore.add("<gray>漲跌 " + Fmt.changeTag(stock.changePercent())
-                + "<reset><gray>　累計 " + Fmt.changeTag(stock.sessionChangePercent()));
+        // In a real-price mode the day change is the number players will cross-check against a
+        // real ticker, so it leads; the per-update move is secondary information.
+        if (plugin.settings().priceSource().needsFeed() && stock.realSymbol() != null) {
+            lore.add("<gray>今日 " + Fmt.changeTag(stock.dayChangePercent())
+                    + "<reset><gray>　本次 " + Fmt.changeTag(stock.changePercent()));
+        } else {
+            lore.add("<gray>漲跌 " + Fmt.changeTag(stock.changePercent())
+                    + "<reset><gray>　累計 " + Fmt.changeTag(stock.sessionChangePercent()));
+        }
         lore.add("<gray>區間 <white>" + Fmt.price(stock.historyLow())
                 + "</white> ~ <white>" + Fmt.price(stock.historyHigh()));
         lore.add("<gray>走勢 " + Sparkline.render(stock.history(), plugin.settings().chartWidth()));

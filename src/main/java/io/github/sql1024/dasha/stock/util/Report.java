@@ -29,7 +29,10 @@ public final class Report {
         lines.add(Lang.mini("<dark_gray>▬▬▬▬▬▬ " + stock.displayName()
                 + " <gray>[" + stock.symbol() + "]<dark_gray> ▬▬▬▬▬▬"));
         lines.add(Lang.mini("<gray>現價：<white>" + Fmt.price(stock.price()) + "</white> " + currency
-                + "<gray> / 股　" + Fmt.changeTag(stock.changePercent())));
+                + "<gray> / 股　" + Fmt.changeTag(
+                        plugin.settings().priceSource().needsFeed() && stock.realSymbol() != null
+                                ? stock.dayChangePercent()
+                                : stock.changePercent())));
         lines.add(Lang.mini("<gray>區間：<white>" + Fmt.price(stock.historyLow())
                 + "</white> ~ <white>" + Fmt.price(stock.historyHigh())
                 + "</white>　<gray>累計 " + Fmt.changeTag(stock.sessionChangePercent())));
@@ -76,7 +79,10 @@ public final class Report {
             String newsPart = plugin.news().hasNews(stock.symbol()) ? " <gold>📰" : "";
             lines.add(Lang.mini("<gray>" + stock.symbol() + " <dark_gray>· " + stock.displayName()
                     + "<gray>　<white>" + Fmt.price(stock.price()) + "</white>　"
-                    + Fmt.changeTag(stock.changePercent()) + "<reset>　"
+                    + Fmt.changeTag(
+                            plugin.settings().priceSource().needsFeed() && stock.realSymbol() != null
+                                    ? stock.dayChangePercent()
+                                    : stock.changePercent()) + "<reset>　"
                     + Sparkline.render(stock.history(), Math.min(12, plugin.settings().chartWidth()))
                     + newsPart + heldPart));
         }

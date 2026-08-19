@@ -162,20 +162,33 @@ public final class MarketManager {
                 stock.setMarketOpen(quote.open());
                 stock.setRealPrice(quote.price());
 
-                if (!quote.open() && settings.freezeWhenClosed() && source == PriceSource.REAL) {
-                    return Double.NaN;
+                double rate = settings.rateFor(quote.currency());
+                // Anchor the day change to the exchange's own previous close, so the percentage
+                // shown in game is the one the player also sees on a real ticker. Set before any
+                // early return: a shut market still has a day change to report.
+                stock.setDayAnchor(quote.previousClose() * rate);
+
+                double converted = stock.clamp(quote.price() * rate);
+
+                if (!quote.open() && source == PriceSource.REAL) {
+                    if (settings.closedDriftPercent() > 0.0) {
+                        // A frozen board is dull; a whisper of drift keeps night play alive
+                        // without pretending the real market moved.
+                        double drift = settings.closedDriftPercent() / 100.0;
+                        return stock.clamp(converted * (1.0 + random.nextGaussian() * drift));
+                    }
+                    if (settings.freezeWhenClosed()) {
+                        // Still sync to the real close once — a server booted outside trading
+                        // hours would otherwise sit on config placeholder prices until the
+                        // exchange reopens. Once matched, stop recording flat ticks.
+                        return sameAsNow(converted, stock.price()) ? Double.NaN : converted;
+                    }
                 }
 
-                double converted = quote.price() * settings.rateFor(quote.currency());
                 if (source == PriceSource.HYBRID) {
-                    converted *= 1.0 + advanceOverlay(stock, settings);
-                } else if (!quote.open() && settings.closedDriftPercent() > 0.0) {
-                    // A frozen board is dull; a whisper of drift keeps night play alive without
-                    // pretending the real market moved.
-                    double drift = settings.closedDriftPercent() / 100.0;
-                    converted *= 1.0 + random.nextGaussian() * drift;
+                    return stock.clamp(converted * (1.0 + advanceOverlay(stock, settings)));
                 }
-                return stock.clamp(converted);
+                return converted;
             }
             if (!settings.fallbackToSimulated()) {
                 // No reading yet and no fallback allowed: better a stale price than a made-up one.
@@ -184,6 +197,11 @@ public final class MarketManager {
         }
 
         return simulatedPrice(stock, settings, dayKey);
+    }
+
+    /** Whether two prices are the same to within rounding, so no history point is worth adding. */
+    private static boolean sameAsNow(double candidate, double current) {
+        return Math.abs(candidate - current) <= Math.max(1.0e-9, Math.abs(candidate) * 1.0e-6);
     }
 
     /** The original random walk, also used as the fallback when a live quote is missing. */

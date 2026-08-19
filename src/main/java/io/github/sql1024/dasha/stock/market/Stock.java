@@ -196,6 +196,20 @@ public final class Stock {
         return Math.clamp(candidate, dayOpen - span, dayOpen + span);
     }
 
+    /**
+     * Pins the day's reference price to a known value — the real exchange's previous close.
+     *
+     * <p>The simulated engine discovers its own day open by watching the clock roll over. A stock
+     * tracking a real market must not do that: players compare the in-game percentage against the
+     * one on their phone, and that number is measured from the previous session's close, not from
+     * whenever the server happened to restart.
+     */
+    public void setDayAnchor(double anchor) {
+        if (Double.isFinite(anchor) && anchor > 0.0) {
+            this.dayOpen = anchor;
+        }
+    }
+
     /** Change since this trading day opened, in percent. */
     public double dayChangePercent() {
         if (dayOpen <= 0.0) {
