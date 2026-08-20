@@ -9,6 +9,8 @@ import io.github.sql1024.dasha.auction.gui.BrowseGui;
 import io.github.sql1024.dasha.auction.gui.CollectGui;
 import io.github.sql1024.dasha.auction.gui.MyListingsGui;
 import io.github.sql1024.dasha.core.Fmt;
+import io.github.sql1024.dasha.core.PayCommand;
+import io.github.sql1024.dasha.core.PaySettings;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
@@ -38,7 +40,8 @@ public final class HubMenu extends Gui {
     private static final int SLOT_COLLECT = 32;
     private static final int SLOT_NEWS = 34;
 
-    private static final int SLOT_TOP = 40;
+    private static final int SLOT_PAY = 38;
+    private static final int SLOT_TOP = 42;
     private static final int SLOT_ADMIN = 49;
     private static final int SLOT_HELP = 45;
     private static final int SLOT_CLOSE = 53;
@@ -152,6 +155,28 @@ public final class HubMenu extends Gui {
                 "<dark_gray>新聞是唯一會影響股價的東西",
                 "", "<yellow>▶ 點擊查看"));
 
+        PaySettings pay = plugin.paySettings();
+        List<String> payLore = new ArrayList<>();
+        if (pay.enabled()) {
+            payLore.add("<gray>把大沙幣直接轉給其他玩家。");
+            payLore.add("<gray>手續費 <white>" + pay.feePercent() + "%</white>"
+                    + "，對方拿到的是扣完之後的。");
+            payLore.add("");
+            payLore.add("<gray>單筆上限　<white>" + Fmt.coin(pay.maxAmount()));
+            long left = plugin.pay().dailyLeft(player.getUniqueId());
+            if (left != Long.MAX_VALUE) {
+                payLore.add("<gray>今日還能轉　<white>" + Fmt.coin(left));
+            }
+            payLore.add("");
+            payLore.add("<red>轉出去就拿不回來。");
+            payLore.add("<yellow>▶ 點擊轉帳　<dark_gray>也可以打 /pay");
+        } else {
+            payLore.add("<red>這個伺服器沒有開放玩家轉帳。");
+        }
+        ItemStack payIcon = new ItemStack(pay.enabled() ? Material.SUNFLOWER : Material.GRAY_DYE);
+        applyMeta(payIcon, (pay.enabled() ? "<yellow>" : "<gray>") + "<bold>轉帳給玩家", payLore);
+        inventory.setItem(SLOT_PAY, payIcon);
+
         inventory.setItem(SLOT_TOP, icon(Material.GOLD_BLOCK, "<gold>富豪榜",
                 "<gray>誰手上大沙幣最多，",
                 "<gray>各佔全服總量幾 %。",
@@ -163,9 +188,9 @@ public final class HubMenu extends Gui {
                 "<gray>  • 股市贏過做市商",
                 "<gray>消失的地方：商店、各種手續費。",
                 "",
-                "<gray>玩家之間的交易是<white>零和</white>的，",
+                "<gray>玩家之間的交易與轉帳是<white>零和</white>的，",
                 "<gray>錢只是換人拿，總量不變。",
-                "", "<dark_gray>沒有簽到、沒有殺怪掉錢、沒有轉帳"));
+                "", "<dark_gray>沒有簽到、沒有殺怪掉錢"));
     }
 
     @Override
@@ -223,6 +248,12 @@ public final class HubMenu extends Gui {
                 plugin.click(player);
                 reopen(new NewsMenu(plugin, player));
             }
+            case SLOT_PAY -> {
+                if (require("dasha.pay")) {
+                    plugin.click(player);
+                    askPayTarget();
+                }
+            }
             case SLOT_TOP -> {
                 if (require("dasha.top")) {
                     plugin.click(player);
@@ -242,6 +273,80 @@ public final class HubMenu extends Gui {
             default -> {
             }
         }
+    }
+
+    /**
+     * Transfer flow for players who never type commands: recipient first, then amount, both in
+     * chat. It deliberately ends in the same {@link PayCommand#execute} the command uses, so the
+     * fee, the limits and the large-amount confirmation behave identically either way.
+     */
+    private void askPayTarget() {
+        if (!plugin.paySettings().enabled()) {
+            plugin.fail(player);
+            player.sendMessage(Msg.prefixed("<red>這個伺服器沒有開放玩家轉帳。"));
+            return;
+        }
+        player.closeInventory();
+        player.sendMessage(Msg.prefixed("<yellow>要轉給誰？請輸入玩家名字："));
+        player.sendMessage(Msg.prefixed("<gray>輸入 <white>取消</white> 放棄。"));
+        plugin.promptChat(player, input -> {
+            String name = input.trim();
+            if (cancelled(name)) {
+                open();
+                return;
+            }
+            java.util.UUID target = plugin.lookupPlayer(name);
+            if (target == null) {
+                plugin.fail(player);
+                player.sendMessage(Msg.prefixed("<red>找不到玩家 <white>" + name
+                        + "</white>。對方必須上過這個伺服器。"));
+                open();
+                return;
+            }
+            if (target.equals(player.getUniqueId())) {
+                plugin.fail(player);
+                player.sendMessage(Msg.prefixed("<red>不能轉帳給自己。"));
+                open();
+                return;
+            }
+            plugin.click(player);
+            askPayAmount(target, plugin.playerName(target));
+        });
+    }
+
+    private void askPayAmount(java.util.UUID target, String targetName) {
+        PaySettings settings = plugin.paySettings();
+        player.sendMessage(Msg.prefixed("<yellow>要轉多少給 <white>" + targetName + "</white>？"));
+        player.sendMessage(Msg.prefixed("<gray>範圍 <white>" + Fmt.coin(settings.minAmount())
+                + "</white> ~ <white>" + Fmt.coin(settings.maxAmount())
+                + "</white>，手續費 <white>" + settings.feePercent() + "%</white>。"));
+        plugin.promptChat(player, input -> {
+            String text = input.trim();
+            if (cancelled(text)) {
+                open();
+                return;
+            }
+            long amount;
+            try {
+                amount = Long.parseLong(text.replace(",", "").replace("_", ""));
+            } catch (NumberFormatException e) {
+                plugin.fail(player);
+                player.sendMessage(Msg.prefixed("<red><white>" + text + "</white> 不是有效的金額。"));
+                askPayAmount(target, targetName);
+                return;
+            }
+            if (amount <= 0L) {
+                plugin.fail(player);
+                player.sendMessage(Msg.prefixed("<red>金額要大於 0。"));
+                askPayAmount(target, targetName);
+                return;
+            }
+            new PayCommand(plugin).execute(player, target, targetName, amount, false);
+        });
+    }
+
+    private static boolean cancelled(String input) {
+        return input.equalsIgnoreCase("取消") || input.equalsIgnoreCase("cancel");
     }
 
     private boolean require(String permission) {

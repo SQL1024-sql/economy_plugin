@@ -27,6 +27,13 @@ public enum TxnType {
     /** Seller's side of an auction sale, net of the cut. */
     AUCTION_PAYOUT(Flow.TRANSFER, "拍賣收款"),
 
+    /** Payer's side of a {@code /pay} transfer, before the fee. */
+    PAY_SENT(Flow.TRANSFER, "轉帳付出"),
+    /** Payee's side of a {@code /pay} transfer, net of the fee. */
+    PAY_RECEIVED(Flow.TRANSFER, "轉帳收款"),
+    /** Fee taken out of a {@code /pay} transfer. */
+    PAY_FEE(Flow.SINK, "轉帳手續費"),
+
     /** Balance moved by an administrator. Always audited. */
     ADMIN(Flow.ADMIN, "管理調整");
 

@@ -25,11 +25,13 @@ Minecraft (Paper 26.1.2 / Java 25) 的封閉式伺服器經濟。股市、拍賣
 | `/sell` 賣礦物 | 產出 | **唯一主要 faucet**，有動態降價 + 每日額度 |
 | 股票賺賠 | 雙向 | 對手是伺服器，玩家淨賺 = 系統印鈔 |
 | 拍賣行成交 | 零和 | 玩家 ↔ 玩家 |
+| `/pay` 轉帳 | 零和 | 玩家 ↔ 玩家，手續費的部分銷毀 |
 | 股票手續費 | 銷毀 | sink |
 | 上架費 + 成交抽成 | 銷毀 | **持續性 sink** |
+| 轉帳手續費 | 銷毀 | sink |
 | `/store` 買建材 | 銷毀 | sink |
 
-沒有簽到、沒有殺怪掉錢、沒有任務獎勵、沒有 `/pay`。
+沒有簽到、沒有殺怪掉錢、沒有任務獎勵。`/pay` 只是把既有的錢換人拿，不會生出新的。
 
 **大沙幣是帳戶餘額，不是背包物品。** 這是刻意的：物品會被複製（複製物品＝複製鈔票），
 拍賣行要能在賣家離線時收款，手續費要能真的銷毀，`/eco stats` 要能算出散落各地的總量。
@@ -154,7 +156,8 @@ Minecraft (Paper 26.1.2 / Java 25) 的封閉式伺服器經濟。股市、拍賣
          ├─ 📦 拍賣行        ─→ 瀏覽、上架、購買
          └─ ⛏️ 賣礦物        ─→ 收購站（即時價、額度條、一鍵全賣）
 
-  花錢 ──── 🏪 伺服器商店    ─→ 分類 → 商品頁
+  花錢 ──┬─ 🏪 伺服器商店    ─→ 分類 → 商品頁
+         └─ 💸 轉帳給玩家    ─→ 聊天欄輸入收款人 → 金額 → 確認
 
   其他 ──┬─ 💼 我的持股      ├─ 📥 取貨箱
          ├─ 📋 我的上架      ├─ 📰 財經新聞
@@ -187,6 +190,8 @@ Minecraft (Paper 26.1.2 / Java 25) 的封閉式伺服器經濟。股市、拍賣
 | `/store [分類]` | `dasha.store` | 伺服器建材商店 |
 | `/ah`、`/ah sell`、`/ah my`、`/ah collect` | `dasha.market` | 玩家拍賣行 |
 | `/stock`、`/stock buy|sell`、`/stock news` | `dasha.stock` | 股市 |
+| `/pay <玩家> <金額>` | `dasha.pay` | 轉帳給其他玩家（收手續費） |
+| `/pay confirm`、`/pay cancel` | `dasha.pay` | 確認 / 取消大額轉帳 |
 | `/eco top` | `dasha.top` | 富豪榜 |
 | `/eco stats [天數]` | `dasha.admin` | 經濟報告 |
 | `/eco give|take|set <玩家> <金額>` | `dasha.admin` | 管理調整（全部寫稽核） |
@@ -201,7 +206,7 @@ Minecraft (Paper 26.1.2 / Java 25) 的封閉式伺服器經濟。股市、拍賣
 
 | 檔案 | 內容 |
 |---|---|
-| `config.yml` | 貨幣名稱、拍賣行費率、音效 |
+| `config.yml` | 貨幣名稱、拍賣行費率、轉帳費率與上限、音效 |
 | `stocks.yml` | 股市參數、五道防線、新聞、股票清單 |
 | `sell.yml` | 礦物收購清單、分級、動態降價、每日額度 |
 | `store.yml` | 伺服器商店商品與價格（147 項，分 6 類） |
@@ -236,7 +241,7 @@ mvn package        # 需要 JDK 25
 
 **幾乎一定是指令撞名，不是權限問題。**
 
-`/eco`、`/money`、`/bal`、`/balance`、`/sell`、`/shop`、`/market` 這些都是 **EssentialsX**
+`/eco`、`/money`、`/bal`、`/balance`、`/sell`、`/shop`、`/market`、`/pay` 這些都是 **EssentialsX**
 （以及不少商店插件）也會註冊的名字。同一個名字只有一個插件搶得到，輸的那個會被
 Bukkit 靜靜地丟到 `plugin:command` 形式，於是指令打下去有反應、卻是別人的插件在回話 ——
 看起來就跟沒權限一模一樣，而且 OP 也救不了，因為根本沒走到權限檢查。
@@ -247,12 +252,13 @@ Bukkit 靜靜地丟到 `plugin:command` 形式，於是指令打下去有反應�
 ⚠ 有指令名稱被其他插件搶走了：
   • /eco 被 EssentialsX 佔用，請改打 /dasha
   • /sell 被 EssentialsX 佔用，請改打 /sellore
+  • /pay 被 EssentialsX 佔用，請改打 /transfer
 連 OP 也一樣 —— 那不是權限問題，是名字撞到了。
 ```
 
 三種解法：
 
-1. **直接用還活著的別名** —— `/dasha`、`/sellore`。最省事
+1. **直接用還活著的別名** —— `/dasha`、`/sellore`、`/transfer`。最省事
 2. **用完整名稱** —— `/dashaeconomy:eco`，一定有效
 3. **搶回名字** —— 改本插件 `plugin.yml` 的 `aliases`，或用伺服器的 `commands.yml` 重新指派
 
@@ -261,7 +267,7 @@ Bukkit 靜靜地丟到 `plugin:command` 形式，於是指令打下去有反應�
 | 節點 | 預設 | 沒有它會怎樣 |
 |---|---|---|
 | `dasha.admin` | OP | 管理面板不出現，管理指令全部拒絕 |
-| `dasha.stock` / `dasha.market` / `dasha.store` / `dasha.sell` | 全開 | 對應的總管按鈕點下去說沒權限 |
+| `dasha.stock` / `dasha.market` / `dasha.store` / `dasha.sell` / `dasha.pay` | 全開 | 對應的總管按鈕點下去說沒權限 |
 
 用 LuckPerms 的話注意：如果你把 `dasha.*` 設成 `false`，那會**蓋過** OP 身分。
 

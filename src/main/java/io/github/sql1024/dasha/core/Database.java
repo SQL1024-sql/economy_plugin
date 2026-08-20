@@ -153,6 +153,14 @@ public final class Database {
             )
             """,
             """
+            CREATE TABLE IF NOT EXISTS pay_quota (
+                uuid  TEXT    NOT NULL,
+                day   TEXT    NOT NULL,
+                sent  INTEGER NOT NULL,
+                PRIMARY KEY (uuid, day)
+            )
+            """,
+            """
             CREATE TABLE IF NOT EXISTS supply_pool (
                 material TEXT PRIMARY KEY NOT NULL,
                 pool     REAL    NOT NULL,
@@ -655,6 +663,47 @@ public final class Database {
         submit("整理收購額度", () -> {
             try (PreparedStatement statement =
                          connection.prepareStatement("DELETE FROM sell_quota WHERE day <> ?")) {
+                statement.setString(1, today);
+                statement.executeUpdate();
+            }
+        });
+    }
+
+    // ------------------------------------------------------------------ 轉帳額度
+
+    public long paySentToday(UUID uuid, String day) {
+        return read("讀取轉帳額度", 0L, () -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "SELECT sent FROM pay_quota WHERE uuid = ? AND day = ?")) {
+                statement.setString(1, uuid.toString());
+                statement.setString(2, day);
+                try (ResultSet rows = statement.executeQuery()) {
+                    return rows.next() ? rows.getLong("sent") : 0L;
+                }
+            }
+        });
+    }
+
+    public void savePayQuota(UUID uuid, String day, long sent) {
+        submit("儲存轉帳額度", () -> {
+            String sql = """
+                    INSERT INTO pay_quota (uuid, day, sent) VALUES (?, ?, ?)
+                    ON CONFLICT (uuid, day) DO UPDATE SET sent = excluded.sent
+                    """;
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                statement.setString(1, uuid.toString());
+                statement.setString(2, day);
+                statement.setLong(3, sent);
+                statement.executeUpdate();
+            }
+        });
+    }
+
+    /** Drops transfer-quota rows for days already past. */
+    public void prunePayQuota(String today) {
+        submit("整理轉帳額度", () -> {
+            try (PreparedStatement statement =
+                         connection.prepareStatement("DELETE FROM pay_quota WHERE day <> ?")) {
                 statement.setString(1, today);
                 statement.executeUpdate();
             }

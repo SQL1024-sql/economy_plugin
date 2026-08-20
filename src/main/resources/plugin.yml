@@ -28,6 +28,10 @@ commands:
     description: 把礦物賣給系統換大沙幣
     usage: /sell [all|price]
     aliases: [sellore]
+  pay:
+    description: 把大沙幣轉給其他玩家
+    usage: /pay <玩家> <金額>
+    aliases: [transfer, send, 轉帳]
 
 permissions:
   dasha.user:
@@ -48,6 +52,9 @@ permissions:
   dasha.top:
     description: 查看富豪榜
     default: true
+  dasha.pay:
+    description: 把大沙幣轉給其他玩家
+    default: true
   dasha.admin:
     description: 管理指令（reload / 發錢 / 強制下架 / 經濟報告 / 發新聞）
     default: op
@@ -58,3 +65,4 @@ permissions:
       dasha.store: true
       dasha.sell: true
       dasha.top: true
+      dasha.pay: true

@@ -23,6 +23,9 @@ import io.github.sql1024.dasha.core.Database;
 import io.github.sql1024.dasha.core.EcoCommand;
 import io.github.sql1024.dasha.core.EconomyService;
 import io.github.sql1024.dasha.core.Lang;
+import io.github.sql1024.dasha.core.PayCommand;
+import io.github.sql1024.dasha.core.PayService;
+import io.github.sql1024.dasha.core.PaySettings;
 import io.github.sql1024.dasha.core.TradingDay;
 import io.github.sql1024.dasha.core.Tuning;
 import io.github.sql1024.dasha.guard.RecipeGuard;
@@ -80,6 +83,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
     private NewsSettings newsSettings;
     private IndicatorSettings indicatorSettings;
     private AuctionSettings auctionSettings;
+    private PaySettings paySettings;
     private SellSettings sellSettings;
     private StoreSettings storeSettings;
 
@@ -91,6 +95,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
     // ---- 服務 ----
     private Database database;
     private EconomyService economy;
+    private PayService pay;
     private MarketManager market;
     private QuoteService quotes;
     private NewsManager news;
@@ -136,6 +141,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         }
 
         economy = new EconomyService(this);
+        pay = new PayService(this);
         market = new MarketManager(this);
         quotes = new QuoteService(this);
         news = new NewsManager(this);
@@ -156,12 +162,14 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         names.putAll(database.loadPlayerNames());
         auctions.load();
         oreSell.load();
+        pay.load();
 
         register("stock", new StockCommand(this));
         register("ah", new AhCommand(this));
         register("store", new StoreCommand(this));
         register("sell", new SellCommand(this));
         register("eco", new EcoCommand(this));
+        register("pay", new PayCommand(this));
 
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
@@ -243,7 +251,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
      */
     private void warnAboutCommandConflicts() {
         List<String> problems = new ArrayList<>();
-        for (String name : List.of("eco", "stock", "ah", "store", "sell")) {
+        for (String name : List.of("eco", "stock", "ah", "store", "sell", "pay")) {
             PluginCommand mine = getCommand(name);
             if (mine == null) {
                 continue;
@@ -310,7 +318,6 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         quotes.pruneUnknown();
         startTicking();
         startQuoteFeed();
-        startQuoteFeed();
         restartExpireTask();
         menus.refreshOpenMenus();
         guard.run();
@@ -329,6 +336,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         newsSettings = NewsSettings.from(stocksConfig);
         indicatorSettings = IndicatorSettings.from(stocksConfig);
         auctionSettings = AuctionSettings.from(getConfig());
+        paySettings = PaySettings.from(getConfig());
         sellSettings = SellSettings.from(sellConfig, getLogger());
         storeSettings = StoreSettings.from(storeConfig, getLogger());
 
@@ -455,6 +463,10 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         return indicatorSettings;
     }
 
+    public PaySettings paySettings() {
+        return paySettings;
+    }
+
     public AuctionSettings auctionSettings() {
         return auctionSettings;
     }
@@ -507,6 +519,10 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         return auctions;
     }
 
+    public PayService pay() {
+        return pay;
+    }
+
     public OreSellService oreSell() {
         return oreSell;
     }
@@ -536,6 +552,7 @@ public final class DashaEconomyPlugin extends JavaPlugin {
     public void handleQuit(Player player) {
         chatPrompts.remove(player.getUniqueId());
         sellSessions.remove(player.getUniqueId());
+        pay.handleQuit(player.getUniqueId());
     }
 
     // ------------------------------------------------------------------ 聊天輸入

@@ -229,6 +229,9 @@ public final class EcoCommand implements TabExecutor {
         sender.sendMessage(Lang.mini("<yellow>/eco top <gray>— 富豪榜"));
         sender.sendMessage(Lang.mini("<gray>賺錢：<white>/sell</white> 賣礦物、<white>/stock</white> 股市、<white>/ah</white> 賣東西給別人"));
         sender.sendMessage(Lang.mini("<gray>花錢：<white>/store</white> 買建材、<white>/ah</white> 跟別人買東西"));
+        if (sender.hasPermission("dasha.pay")) {
+            sender.sendMessage(Lang.mini("<yellow>/pay <玩家> <金額> <gray>— 轉帳給其他玩家（收手續費）"));
+        }
         if (sender.hasPermission("dasha.admin")) {
             sender.sendMessage(Lang.mini("<dark_red>/eco stats [天數] <gray>— 經濟報告"));
             sender.sendMessage(Lang.mini("<dark_red>/eco give|take|set <玩家> <金額>"));

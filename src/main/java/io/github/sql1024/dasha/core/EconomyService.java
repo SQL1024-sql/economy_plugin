@@ -149,8 +149,25 @@ public final class EconomyService {
      */
     public boolean transfer(UUID from, String fromName, UUID to, String toName,
                             long amount, long cut, String detail) {
+        return transfer(from, fromName, to, toName, amount, cut, detail,
+                TxnType.AUCTION_BUY, TxnType.AUCTION_PAYOUT, TxnType.AUCTION_CUT);
+    }
+
+    /**
+     * The same atomic two-sided move, with the ledger types spelled out. {@code /pay} books its
+     * own types so the report can tell a hand-to-hand transfer apart from an auction sale even
+     * though the money moves identically.
+     *
+     * @return {@code false} when the payer is short; nothing changes in that case
+     */
+    public boolean transfer(UUID from, String fromName, UUID to, String toName,
+                            long amount, long cut, String detail,
+                            TxnType payType, TxnType payoutType, TxnType cutType) {
         if (amount < 0L || cut < 0L || cut > amount) {
             throw new IllegalArgumentException("轉帳金額不合法：amount=" + amount + " cut=" + cut);
+        }
+        if (from.equals(to)) {
+            throw new IllegalArgumentException("不能轉帳給自己：" + from);
         }
         lock.lock();
         try {
@@ -160,16 +177,16 @@ public final class EconomyService {
             }
             long payerAfter = payerBalance - amount;
             balances.put(from, payerAfter);
-            record(from, fromName, TxnType.AUCTION_BUY, -amount, payerAfter, detail);
+            record(from, fromName, payType, -amount, payerAfter, detail);
 
             long payout = amount - cut;
             long payeeAfter = balances.getOrDefault(to, 0L) + payout;
             balances.put(to, payeeAfter);
-            record(to, toName, TxnType.AUCTION_PAYOUT, payout, payeeAfter, detail);
+            record(to, toName, payoutType, payout, payeeAfter, detail);
 
             if (cut > 0L) {
                 // The cut never lands in an account — it leaves the economy here.
-                record(to, toName, TxnType.AUCTION_CUT, -cut, payeeAfter, detail);
+                record(to, toName, cutType, -cut, payeeAfter, detail);
             }
             return true;
         } finally {

@@ -84,7 +84,9 @@ public final class EcoStats {
                 case TRANSFER -> "<aqua>~";
                 case ADMIN -> "<light_purple>*";
             };
-            lines.add(Lang.mini("  <gray>" + type.label() + "　" + colour + Fmt.coin(value) + "</white>"));
+            // No closing tag: the colour above is what opened, and a stray </white> closing a
+            // tag that was never opened renders as literal text.
+            lines.add(Lang.mini("  <gray>" + type.label() + "　" + colour + Fmt.coin(value)));
         }
         lines.add(Component.empty());
 
