@@ -88,6 +88,10 @@ public final class SellMenu extends Gui {
         lore.add("<gray>目前收購價　<yellow>" + Fmt.coin(now) + "</yellow> <dark_gray>/ 基礎 "
                 + Fmt.coin(item.basePrice()));
         lore.add("<gray>行情　" + bar(factor) + " <white>" + Math.round(factor * 100) + "%");
+        if (factor < 1.0) {
+            lore.add("<gray>回到頂點價還要　<white>"
+                    + Fmt.duration(plugin.oreSell().secondsToFullPrice(item)));
+        }
         if (!item.tier().isBlank()) {
             lore.add("<dark_gray>分級：" + item.tier());
         }

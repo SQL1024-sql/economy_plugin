@@ -18,10 +18,15 @@ import org.bukkit.inventory.PlayerInventory;
  * entered here or was won from the market maker on the stock exchange.
  *
  * <p>Two things stop it running away. Each ore has a <em>supply pool</em> that fills as the server
- * sells and drains on a half-life; while it is full the buy-back price sags towards a floor, so a
+ * sells and drains at a steady rate; while it is full the buy-back price sags towards a floor, so a
  * gold rush prices itself down and recovers on its own without anybody editing config. On top of
  * that each player has a daily earnings quota, which caps what an alt army or an AFK farm can
  * extract no matter how much material it produces.
+ *
+ * <p>The pool drains linearly rather than on a half-life, because a half-life never actually
+ * reaches zero: operators want to say "the price is back to normal an hour after the rush", and
+ * only a straight line gives a finite answer to that. The rate is set so an ore pinned at the
+ * price floor climbs back to full price in exactly {@code recovery-hours}.
  *
  * <p>Selling is one-way on purpose: the server never sells ore back. That closes every arbitrage
  * loop through this service — there is no round trip to profit from.
@@ -50,16 +55,16 @@ public final class OreSellService {
 
     // ------------------------------------------------------------------ 價格
 
-    /** Current pool level for one ore, after applying the decay owed since it was last touched. */
+    /** Current pool level for one ore, after applying the drain owed since it was last touched. */
     public double pool(Material material) {
         double[] entry = pools.get(material.name());
         if (entry == null) {
             return 0.0;
         }
-        return decay(entry[0], (long) entry[1]);
+        return drained(material, entry[0], (long) entry[1]);
     }
 
-    private double decay(double pool, long updated) {
+    private double drained(Material material, double pool, long updated) {
         if (pool <= 0.0) {
             return 0.0;
         }
@@ -67,7 +72,56 @@ public final class OreSellService {
         if (hours <= 0.0) {
             return pool;
         }
-        return pool * Math.pow(0.5, hours / plugin.sellSettings().halfLifeHours());
+        return Math.max(0.0, pool - hours * drainPerHour(material));
+    }
+
+    /**
+     * Pool units that evaporate per hour. Scaled per ore so every ore recovers on the same clock:
+     * the pool level that pins the price at the floor, divided by the configured recovery time.
+     *
+     * <p>A pool pushed past that level — the server dumped far more than it took to bottom the
+     * price out — takes proportionally longer, which is the intended punishment for a real flood.
+     */
+    private double drainPerHour(Material material) {
+        SellSettings settings = plugin.sellSettings();
+        SellSettings.Item item = settings.item(material);
+        if (item == null) {
+            // No longer purchased; let the leftover pool disappear rather than linger in the file.
+            return Double.MAX_VALUE;
+        }
+        return item.softCap() * (1.0 - settings.priceFloor()) / settings.recoveryHours();
+    }
+
+    /**
+     * Empties every supply pool, putting all buy-back prices straight back to their base price.
+     * Administrative: for undoing a test, a duped-item incident, or a rush the operator has
+     * decided not to make everyone wait out.
+     *
+     * @return how many ores actually had a pool to clear
+     */
+    public int resetPools() {
+        int cleared = 0;
+        for (Map.Entry<String, double[]> entry : pools.entrySet()) {
+            if (entry.getValue()[0] > 0.0) {
+                cleared++;
+            }
+        }
+        pools.clear();
+        plugin.database().clearSupplyPools();
+        return cleared;
+    }
+
+    /** Seconds until this ore is back at its base price, or 0 when it already is. */
+    public long secondsToFullPrice(SellSettings.Item item) {
+        double current = pool(item.material());
+        if (current <= 0.0) {
+            return 0L;
+        }
+        double rate = drainPerHour(item.material());
+        if (rate <= 0.0 || rate == Double.MAX_VALUE) {
+            return 0L;
+        }
+        return Math.max(0L, Math.round(current / rate * 3600.0));
     }
 
     /** Multiplier currently applied to an ore's base price, between the floor and 1.0. */
@@ -241,7 +295,7 @@ public final class OreSellService {
 
         double[] entry = pools.computeIfAbsent(item.material().name(),
                 key -> new double[] {0.0, System.currentTimeMillis()});
-        double current = decay(entry[0], (long) entry[1]);
+        double current = drained(item.material(), entry[0], (long) entry[1]);
         entry[0] = current + amount;
         entry[1] = System.currentTimeMillis();
         plugin.database().saveSupplyPool(item.material().name(), entry[0], (long) entry[1]);

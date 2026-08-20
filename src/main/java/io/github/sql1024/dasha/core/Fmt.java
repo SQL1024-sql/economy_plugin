@@ -52,6 +52,22 @@ public final class Fmt {
         return body;
     }
 
+    /** A duration in seconds as 「1 小時 5 分」 / 「12 分」 / 「45 秒」. */
+    public static String duration(long seconds) {
+        if (seconds <= 0L) {
+            return "0 秒";
+        }
+        long hours = seconds / 3600L;
+        long minutes = (seconds % 3600L) / 60L;
+        if (hours > 0L) {
+            return minutes > 0L ? hours + " 小時 " + minutes + " 分" : hours + " 小時";
+        }
+        if (minutes > 0L) {
+            return minutes + " 分";
+        }
+        return seconds + " 秒";
+    }
+
     /** MiniMessage-coloured percentage with an arrow, e.g. {@code <green>▲ +3.42%}. */
     public static String changeTag(double percent) {
         if (percent > 0.0) {

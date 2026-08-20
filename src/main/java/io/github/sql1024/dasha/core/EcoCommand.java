@@ -22,7 +22,7 @@ public final class EcoCommand implements TabExecutor {
 
     private static final List<String> PLAYER_SUB = List.of("bal", "menu", "top", "help");
     private static final List<String> ADMIN_SUB =
-            List.of("stats", "top", "give", "take", "set", "audit", "reload", "help");
+            List.of("stats", "top", "give", "take", "set", "audit", "refresh", "reload", "help");
 
     private final DashaEconomyPlugin plugin;
 
@@ -47,6 +47,7 @@ public final class EcoCommand implements TabExecutor {
             case "top" -> top(sender, args);
             case "give", "take", "set" -> adjust(sender, sub, args);
             case "audit" -> audit(sender);
+            case "refresh" -> refresh(sender);
             case "reload" -> reload(sender);
             case "help" -> help(sender);
             case "" -> {
@@ -214,6 +215,23 @@ public final class EcoCommand implements TabExecutor {
         }
     }
 
+    /**
+     * Empties the ore supply pools so every buy-back price jumps back to base. Same action as the
+     * admin panel's button, reachable from console and from a script.
+     */
+    private void refresh(CommandSender sender) {
+        if (!sender.hasPermission("dasha.admin")) {
+            plugin.lang().send(sender, "no-permission");
+            return;
+        }
+        int cleared = plugin.oreSell().resetPools();
+        sender.sendMessage(Lang.mini(cleared > 0
+                ? "<green>已刷新收購價：<white>" + cleared + "</white> 種礦物的供給池歸零。"
+                : "<gray>收購價本來就都在頂點，沒有東西需要刷新。"));
+        plugin.getLogger().info("[稽核] " + sender.getName() + " 手動刷新收購價，清掉 "
+                + cleared + " 種礦物的供給池。");
+    }
+
     private void reload(CommandSender sender) {
         if (!sender.hasPermission("dasha.admin")) {
             plugin.lang().send(sender, "no-permission");
@@ -236,6 +254,7 @@ public final class EcoCommand implements TabExecutor {
             sender.sendMessage(Lang.mini("<dark_red>/eco stats [天數] <gray>— 經濟報告"));
             sender.sendMessage(Lang.mini("<dark_red>/eco give|take|set <玩家> <金額>"));
             sender.sendMessage(Lang.mini("<dark_red>/eco audit <gray>— 反向通道檢查"));
+            sender.sendMessage(Lang.mini("<dark_red>/eco refresh <gray>— 收購價立刻回到頂點"));
             sender.sendMessage(Lang.mini("<dark_red>/eco reload"));
         }
     }

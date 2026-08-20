@@ -109,10 +109,14 @@ public final class SellCommand implements TabExecutor {
             double factor = plugin.oreSell().discountFactor(item);
             String colour = factor > 0.75 ? "<green>" : factor > 0.45 ? "<yellow>" : "<red>";
             String tier = item.tier().isBlank() ? "" : " <dark_gray>[" + item.tier() + "]";
+            // colour is green/yellow/red, so a closing </white> here has nothing to close and
+            // MiniMessage prints it as literal text.
+            String recovery = factor >= 1.0 ? "" : "　<dark_gray>回頂點 "
+                    + Fmt.duration(plugin.oreSell().secondsToFullPrice(item));
             player.sendMessage(Lang.mini("<gray>" + item.material().name() + tier
-                    + "　" + colour + Fmt.coin(now) + "</white>"
+                    + "　" + colour + Fmt.coin(now)
                     + "<dark_gray>/" + Fmt.coin(item.basePrice())
-                    + "　(" + Math.round(factor * 100) + "%)"));
+                    + "　(" + Math.round(factor * 100) + "%)" + recovery));
         }
 
         long left = plugin.oreSell().quotaLeft(player.getUniqueId());

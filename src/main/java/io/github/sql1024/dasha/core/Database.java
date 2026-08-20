@@ -725,6 +725,16 @@ public final class Database {
         });
     }
 
+    /** Wipes every supply pool, so all buy-back prices reset to base. Administrative. */
+    public void clearSupplyPools() {
+        submit("清空供給池", () -> {
+            try (PreparedStatement statement =
+                         connection.prepareStatement("DELETE FROM supply_pool")) {
+                statement.executeUpdate();
+            }
+        });
+    }
+
     public void saveSupplyPool(String material, double pool, long updated) {
         submit("儲存供給池", () -> {
             String sql = """

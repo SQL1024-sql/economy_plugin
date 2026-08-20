@@ -16,14 +16,14 @@ import org.bukkit.configuration.file.FileConfiguration;
  * @param enabled       whether ore selling works at all
  * @param dailyQuota    most 大沙幣 one player can earn from selling in a day, 0 for no limit
  * @param priceFloor    fraction of the base price the buy-back can never fall below
- * @param halfLifeHours how long it takes an untouched supply pool to drain by half
+ * @param recoveryHours how long an ore priced at the floor takes to climb back to full price
  * @param items         material to its entry, in the order config lists them
  */
 public record SellSettings(
         boolean enabled,
         long dailyQuota,
         double priceFloor,
-        double halfLifeHours,
+        double recoveryHours,
         Map<Material, Item> items) {
 
     /**
@@ -71,7 +71,7 @@ public record SellSettings(
                 config.getBoolean("enabled", true),
                 Math.max(0L, config.getLong("daily-quota", 8000L)),
                 Math.clamp(config.getDouble("price-floor-ratio", 0.3), 0.0, 1.0),
-                Math.max(0.1, config.getDouble("supply-half-life-hours", 24.0)),
+                Math.max(0.01, config.getDouble("recovery-hours", 1.0)),
                 Map.copyOf(items));
     }
 

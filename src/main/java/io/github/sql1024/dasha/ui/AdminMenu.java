@@ -1,5 +1,6 @@
 package io.github.sql1024.dasha.ui;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -9,11 +10,13 @@ import io.github.sql1024.dasha.auction.Msg;
 import io.github.sql1024.dasha.core.Fmt;
 import io.github.sql1024.dasha.core.TxnType;
 import io.github.sql1024.dasha.guard.RecipeGuard;
+import io.github.sql1024.dasha.sell.SellSettings;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.inventory.ItemStack;
 
 /**
  * 管理面板 — every admin command reachable without typing one.
@@ -37,6 +40,7 @@ public final class AdminMenu extends Gui {
     private static final int SLOT_TICK = 34;
     private static final int SLOT_FEED = 20;
 
+    private static final int SLOT_ORE_REFRESH = 38;
     private static final int SLOT_WALLET = 40;
     private static final int SLOT_RELOAD = 49;
     private static final int SLOT_BACK = 45;
@@ -118,6 +122,8 @@ public final class AdminMenu extends Gui {
                 "<gray>不用等 " + plugin.settings().updateIntervalSeconds() + " 秒。",
                 "", "<yellow>▶ 點擊執行"));
 
+        drawOreRefresh();
+
         inventory.setItem(SLOT_WALLET, icon(Material.PLAYER_HEAD, "<green>玩家錢包管理",
                 "<gray>查詢、發放、扣除、直接設定餘額。",
                 "",
@@ -141,6 +147,60 @@ public final class AdminMenu extends Gui {
      * course rather than being yanked, because a stock frozen mid-move with no explanation is
      * worse for players than letting the last story play out.
      */
+    /**
+     * Ore buy-back health, and the button that skips the wait.
+     *
+     * <p>The pool drains on its own, so this is never <em>needed</em> — it exists for the cases
+     * where waiting is the wrong answer: a dupe or a test run flooded a pool with material nobody
+     * actually mined, and the honest players should not spend an hour selling at the floor for it.
+     */
+    private void drawOreRefresh() {
+        int discounted = 0;
+        long longestWait = 0L;
+        String worst = null;
+        double worstFactor = 1.0;
+
+        for (SellSettings.Item item : plugin.sellSettings().items().values()) {
+            double factor = plugin.oreSell().discountFactor(item);
+            if (factor >= 1.0) {
+                continue;
+            }
+            discounted++;
+            long wait = plugin.oreSell().secondsToFullPrice(item);
+            longestWait = Math.max(longestWait, wait);
+            if (factor < worstFactor) {
+                worstFactor = factor;
+                worst = item.material().name();
+            }
+        }
+
+        List<String> lore = new ArrayList<>();
+        lore.add("<dark_gray>━━━━━━━━━━━━━━━");
+        lore.add("<gray>打折中　<white>" + discounted + "</white> / "
+                + plugin.sellSettings().items().size() + " 種");
+        if (worst != null) {
+            lore.add("<gray>最慘的　<white>" + worst + "</white> <red>"
+                    + Math.round(worstFactor * 100.0) + "%</red> 價");
+            lore.add("<gray>全部回到頂點還要　<white>" + Fmt.duration(longestWait));
+        } else {
+            lore.add("<green>目前每一種都是頂點價格。");
+        }
+        lore.add("");
+        lore.add("<gray>自然回復時間　<white>"
+                + Fmt.duration(Math.round(plugin.sellSettings().recoveryHours() * 3600.0))
+                + "</white> <dark_gray>(sell.yml recovery-hours)");
+        lore.add("");
+        lore.add("<red>點下去會把所有供給池歸零，");
+        lore.add("<red>收購價立刻回到頂點。");
+        lore.add("<dark_gray>不會動到玩家的每日額度。");
+        lore.add("");
+        lore.add("<yellow>▶ 點擊刷新");
+
+        ItemStack item = new ItemStack(discounted > 0 ? Material.RAW_IRON : Material.IRON_BLOCK);
+        applyMeta(item, "<aqua><bold>手動刷新收購價", lore);
+        inventory.setItem(SLOT_ORE_REFRESH, item);
+    }
+
     private void drawNewsToggle() {
         if (!plugin.news().newsAffectsMarket()) {
             org.bukkit.inventory.ItemStack inert =
@@ -328,6 +388,16 @@ public final class AdminMenu extends Gui {
                 plugin.click(player);
                 plugin.market().tick();
                 player.sendMessage(Msg.prefixed("<green>已手動更新股價。"));
+                render();
+            }
+            case SLOT_ORE_REFRESH -> {
+                plugin.click(player);
+                int cleared = plugin.oreSell().resetPools();
+                plugin.success(player);
+                player.sendMessage(Msg.prefixed(cleared > 0
+                        ? "<green>已刷新收購價：<white>" + cleared
+                                + "</white> 種礦物的供給池歸零，價格回到頂點。"
+                        : "<gray>收購價本來就都在頂點，沒有東西需要刷新。"));
                 render();
             }
             case SLOT_WALLET -> {
