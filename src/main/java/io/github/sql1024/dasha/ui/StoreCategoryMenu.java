@@ -18,14 +18,26 @@ import org.bukkit.inventory.ItemStack;
 /** 伺服器商店的分類選擇頁，讓 {@code /store} 不用先知道分類名稱。 */
 public final class StoreCategoryMenu extends Gui {
 
-    private static final int[] SLOTS = {10, 12, 14, 16, 28, 30, 32, 34};
-    private static final int SLOT_BALANCE = 22;
+    private static final int[] SLOTS = {
+        10, 11, 12, 13, 14, 15, 16,
+        19, 20, 21, 22, 23, 24, 25,
+        28, 29, 30, 31, 32, 33, 34,
+    };
     private static final int SLOT_BACK = 45;
+    private static final int SLOT_PREV = 48;
+    private static final int SLOT_BALANCE = 49;
+    private static final int SLOT_NEXT = 50;
 
     private final List<StoreSettings.Category> shown = new ArrayList<>();
+    private int page;
 
     public StoreCategoryMenu(DashaEconomyPlugin plugin, Player player) {
+        this(plugin, player, 0);
+    }
+
+    public StoreCategoryMenu(DashaEconomyPlugin plugin, Player player, int page) {
         super(plugin, player);
+        this.page = Math.max(0, page);
         this.inventory = Bukkit.createInventory(this, 54,
                 Lang.mini(plugin.storeSettings().guiTitle() + " <dark_gray>— 分類"));
     }
@@ -35,14 +47,27 @@ public final class StoreCategoryMenu extends Gui {
         inventory.clear();
         shown.clear();
 
-        int index = 0;
-        for (StoreSettings.Category category : plugin.storeSettings().categories()) {
-            if (index >= SLOTS.length) {
-                break;
-            }
+        // Paginated rather than truncated: an operator who adds a thirteenth category should see
+        // it, not silently lose it off the end of a fixed slot list.
+        List<StoreSettings.Category> all = plugin.storeSettings().categories();
+        int pages = Math.max(1, (all.size() + SLOTS.length - 1) / SLOTS.length);
+        page = Math.clamp(page, 0, pages - 1);
+
+        int from = page * SLOTS.length;
+        int to = Math.min(all.size(), from + SLOTS.length);
+        for (int i = from; i < to; i++) {
+            StoreSettings.Category category = all.get(i);
             shown.add(category);
-            inventory.setItem(SLOTS[index], categoryIcon(category));
-            index++;
+            inventory.setItem(SLOTS[i - from], categoryIcon(category));
+        }
+
+        if (page > 0) {
+            inventory.setItem(SLOT_PREV, icon(Material.ARROW, "<yellow>← 上一頁",
+                    "<gray>第 " + page + " / " + pages + " 頁"));
+        }
+        if (page < pages - 1) {
+            inventory.setItem(SLOT_NEXT, icon(Material.ARROW, "<yellow>下一頁 →",
+                    "<gray>第 " + (page + 2) + " / " + pages + " 頁"));
         }
 
         inventory.setItem(SLOT_BALANCE, icon(Material.SUNFLOWER,
@@ -85,6 +110,18 @@ public final class StoreCategoryMenu extends Gui {
         if (slot == SLOT_BACK) {
             plugin.click(player);
             reopen(new HubMenu(plugin, player));
+            return;
+        }
+        if (slot == SLOT_PREV && page > 0) {
+            plugin.click(player);
+            page--;
+            render();
+            return;
+        }
+        if (slot == SLOT_NEXT) {
+            plugin.click(player);
+            page++;
+            render();
             return;
         }
         for (int i = 0; i < SLOTS.length && i < shown.size(); i++) {

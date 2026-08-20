@@ -9,11 +9,21 @@
 #      買方塊 → 拆成礦物 → 賣回系統 → 賺差價 → 無限重複
 #  這是無限印鈔機，會在幾天內毀掉整個經濟。
 #
-#  規則：商店價 ≥ 拆解後的礦物收購總值 × 1.5
+#  規則：商店價 >= 拆解後的礦物收購總值 x 1.5
 #
 #  插件啟動時會用 Minecraft 真實的合成表自動檢查一遍，
 #  有問題會在 console 印警告並附上建議價格。
 #  也可以隨時用 /eco audit 手動檢查。
+#
+#  ⚠ 自動檢查抓不到的兩種情況，加東西時要自己想：
+#    1. 「挖下去會掉收購品」的方塊。例如紫水晶簇挖了會掉紫水晶，
+#       任何 *_ORE 也一樣 —— 這些永遠不要上架。
+#    2. 「刮掉氧化／脫蠟之後變成別的方塊」的銅。所有銅方塊變體
+#       都能一路刮回銅方塊再拆成銅錠，所以整組都要用同一個安全價。
+#
+#  ⚠ 這裡刻意不賣的東西：
+#    鑽石方塊、綠寶石方塊、獄髓方塊、遠古遺骸、各種原礦與礦石。
+#    那些是「自己挖」的目標，上架就沒人下礦坑了。
 #
 #  改完用 /eco reload 生效。
 # ============================================================
@@ -23,43 +33,416 @@ gui-title: '<gradient:#a1c4fd:#c2e9fb>伺服器商店</gradient>'
 
 categories:
 
-  # ------------------------------------------------------------
+
+  # ----------------------------------------------------------
   stone:
     name: '<gray>石材'
     icon: STONE_BRICKS
     items:
+
+      # ---- 圓石與苔石 ----
       COBBLESTONE: 2
-      STONE: 4
-      SMOOTH_STONE: 5
-      DEEPSLATE: 3
-      COBBLED_DEEPSLATE: 3
-      ANDESITE: 3
-      DIORITE: 3
-      GRANITE: 3
-      TUFF: 3
-      CALCITE: 5
-      DRIPSTONE_BLOCK: 4
-      POLISHED_ANDESITE: 5
-      POLISHED_DIORITE: 5
-      POLISHED_GRANITE: 5
-      POLISHED_DEEPSLATE: 5
-      STONE_BRICKS: 6
-      MOSSY_STONE_BRICKS: 8
-      CHISELED_STONE_BRICKS: 8
-      DEEPSLATE_BRICKS: 6
-      DEEPSLATE_TILES: 7
-      STONE_BRICK_STAIRS: 4
-      STONE_BRICK_SLAB: 2
-      STONE_BRICK_WALL: 4
       COBBLESTONE_STAIRS: 2
       COBBLESTONE_SLAB: 1
       COBBLESTONE_WALL: 2
+      MOSSY_COBBLESTONE: 3
+      MOSSY_COBBLESTONE_STAIRS: 3
+      MOSSY_COBBLESTONE_SLAB: 2
+      MOSSY_COBBLESTONE_WALL: 3
 
-  # ------------------------------------------------------------
+      # ---- 石頭 ----
+      STONE: 4
+      STONE_STAIRS: 4
+      STONE_SLAB: 2
+      SMOOTH_STONE: 5
+      SMOOTH_STONE_SLAB: 3
+
+      # ---- 石磚 ----
+      STONE_BRICKS: 6
+      MOSSY_STONE_BRICKS: 8
+      CRACKED_STONE_BRICKS: 6
+      CHISELED_STONE_BRICKS: 8
+
+      # ---- 安山岩／閃長岩／花崗岩 ----
+      ANDESITE: 3
+      ANDESITE_STAIRS: 3
+      ANDESITE_SLAB: 2
+      ANDESITE_WALL: 3
+      POLISHED_ANDESITE: 5
+      POLISHED_ANDESITE_STAIRS: 5
+      POLISHED_ANDESITE_SLAB: 3
+      DIORITE: 3
+      DIORITE_STAIRS: 3
+      DIORITE_SLAB: 2
+      DIORITE_WALL: 3
+      POLISHED_DIORITE: 5
+      POLISHED_DIORITE_STAIRS: 5
+      POLISHED_DIORITE_SLAB: 3
+      GRANITE: 3
+      GRANITE_STAIRS: 3
+      GRANITE_SLAB: 2
+      GRANITE_WALL: 3
+      POLISHED_GRANITE: 5
+      POLISHED_GRANITE_STAIRS: 5
+      POLISHED_GRANITE_SLAB: 3
+
+      # ---- 深板岩 ----
+      DEEPSLATE: 3
+      COBBLED_DEEPSLATE: 3
+      COBBLED_DEEPSLATE_STAIRS: 3
+      COBBLED_DEEPSLATE_SLAB: 2
+      COBBLED_DEEPSLATE_WALL: 3
+      POLISHED_DEEPSLATE: 5
+      POLISHED_DEEPSLATE_STAIRS: 5
+      POLISHED_DEEPSLATE_SLAB: 3
+      POLISHED_DEEPSLATE_WALL: 5
+      DEEPSLATE_BRICKS: 6
+      DEEPSLATE_TILES: 7
+      CHISELED_DEEPSLATE: 5
+      CRACKED_DEEPSLATE_BRICKS: 6
+      CRACKED_DEEPSLATE_TILES: 7
+
+      # ---- 凝灰岩 ----
+      TUFF: 3
+      TUFF_STAIRS: 3
+      TUFF_SLAB: 2
+      TUFF_WALL: 3
+      POLISHED_TUFF: 5
+      POLISHED_TUFF_STAIRS: 5
+      POLISHED_TUFF_SLAB: 3
+      POLISHED_TUFF_WALL: 5
+      TUFF_BRICKS: 6
+      CHISELED_TUFF: 6
+      CHISELED_TUFF_BRICKS: 7
+
+      # ---- 其他 ----
+      CALCITE: 5
+      DRIPSTONE_BLOCK: 4
+      POINTED_DRIPSTONE: 6
+      OBSIDIAN: 30
+      CRYING_OBSIDIAN: 40
+
+  # ----------------------------------------------------------
+  earth:
+    name: '<yellow>泥土與砂岩'
+    icon: SANDSTONE
+    items:
+
+      # ---- 土 ----
+      DIRT: 1
+      COARSE_DIRT: 1
+      ROOTED_DIRT: 2
+      DIRT_PATH: 2
+      GRASS_BLOCK: 3
+      PODZOL: 3
+      MYCELIUM: 4
+
+      # ---- 沙與礫石 ----
+      SAND: 2
+      RED_SAND: 2
+      GRAVEL: 2
+      CLAY: 4
+
+      # ---- 泥巴 ----
+      MUD: 3
+      PACKED_MUD: 4
+      MUD_BRICKS: 6
+
+      # ---- 砂岩 ----
+      SANDSTONE: 4
+      SANDSTONE_STAIRS: 4
+      SANDSTONE_SLAB: 2
+      SANDSTONE_WALL: 4
+      CHISELED_SANDSTONE: 6
+      CUT_SANDSTONE: 5
+      CUT_SANDSTONE_SLAB: 3
+      SMOOTH_SANDSTONE: 5
+      SMOOTH_SANDSTONE_STAIRS: 5
+      SMOOTH_SANDSTONE_SLAB: 3
+
+      # ---- 紅砂岩 ----
+      RED_SANDSTONE: 4
+      RED_SANDSTONE_STAIRS: 4
+      RED_SANDSTONE_SLAB: 2
+      RED_SANDSTONE_WALL: 4
+      CHISELED_RED_SANDSTONE: 6
+      CUT_RED_SANDSTONE: 5
+      CUT_RED_SANDSTONE_SLAB: 3
+      SMOOTH_RED_SANDSTONE: 5
+      SMOOTH_RED_SANDSTONE_STAIRS: 5
+      SMOOTH_RED_SANDSTONE_SLAB: 3
+
+      # ---- 冰與雪 ----
+      SNOW_BLOCK: 3
+      SNOW: 1
+      ICE: 4
+      PACKED_ICE: 8
+      BLUE_ICE: 12
+
+      # ---- 苔蘚 ----
+      MOSS_BLOCK: 4
+      MOSS_CARPET: 2
+      PALE_MOSS_BLOCK: 4
+      PALE_MOSS_CARPET: 2
+      PALE_HANGING_MOSS: 3
+
+  # ----------------------------------------------------------
+  wood:
+    name: '<gold>木材'
+    icon: OAK_PLANKS
+    items:
+
+      # ---- 橡木 ----
+      OAK_LOG: 6
+      STRIPPED_OAK_LOG: 6
+      OAK_WOOD: 6
+      STRIPPED_OAK_WOOD: 6
+      OAK_PLANKS: 2
+      OAK_STAIRS: 3
+      OAK_SLAB: 1
+      OAK_FENCE: 3
+      OAK_FENCE_GATE: 4
+      OAK_DOOR: 5
+      OAK_TRAPDOOR: 4
+      OAK_PRESSURE_PLATE: 2
+      OAK_BUTTON: 1
+      OAK_SIGN: 3
+
+      # ---- 杉木 ----
+      SPRUCE_LOG: 6
+      STRIPPED_SPRUCE_LOG: 6
+      SPRUCE_WOOD: 6
+      STRIPPED_SPRUCE_WOOD: 6
+      SPRUCE_PLANKS: 2
+      SPRUCE_STAIRS: 3
+      SPRUCE_SLAB: 1
+      SPRUCE_FENCE: 3
+      SPRUCE_FENCE_GATE: 4
+      SPRUCE_DOOR: 5
+      SPRUCE_TRAPDOOR: 4
+      SPRUCE_PRESSURE_PLATE: 2
+      SPRUCE_BUTTON: 1
+      SPRUCE_SIGN: 3
+
+      # ---- 樺木 ----
+      BIRCH_LOG: 6
+      STRIPPED_BIRCH_LOG: 6
+      BIRCH_WOOD: 6
+      STRIPPED_BIRCH_WOOD: 6
+      BIRCH_PLANKS: 2
+      BIRCH_STAIRS: 3
+      BIRCH_SLAB: 1
+      BIRCH_FENCE: 3
+      BIRCH_FENCE_GATE: 4
+      BIRCH_DOOR: 5
+      BIRCH_TRAPDOOR: 4
+      BIRCH_PRESSURE_PLATE: 2
+      BIRCH_BUTTON: 1
+      BIRCH_SIGN: 3
+
+      # ---- 叢林木 ----
+      JUNGLE_LOG: 6
+      STRIPPED_JUNGLE_LOG: 6
+      JUNGLE_WOOD: 6
+      STRIPPED_JUNGLE_WOOD: 6
+      JUNGLE_PLANKS: 2
+      JUNGLE_STAIRS: 3
+      JUNGLE_SLAB: 1
+      JUNGLE_FENCE: 3
+      JUNGLE_FENCE_GATE: 4
+      JUNGLE_DOOR: 5
+      JUNGLE_TRAPDOOR: 4
+      JUNGLE_PRESSURE_PLATE: 2
+      JUNGLE_BUTTON: 1
+      JUNGLE_SIGN: 3
+
+      # ---- 相思木 ----
+      ACACIA_LOG: 6
+      STRIPPED_ACACIA_LOG: 6
+      ACACIA_WOOD: 6
+      STRIPPED_ACACIA_WOOD: 6
+      ACACIA_PLANKS: 2
+      ACACIA_STAIRS: 3
+      ACACIA_SLAB: 1
+      ACACIA_FENCE: 3
+      ACACIA_FENCE_GATE: 4
+      ACACIA_DOOR: 5
+      ACACIA_TRAPDOOR: 4
+      ACACIA_PRESSURE_PLATE: 2
+      ACACIA_BUTTON: 1
+      ACACIA_SIGN: 3
+
+      # ---- 深色橡木 ----
+      DARK_OAK_LOG: 6
+      STRIPPED_DARK_OAK_LOG: 6
+      DARK_OAK_WOOD: 6
+      STRIPPED_DARK_OAK_WOOD: 6
+      DARK_OAK_PLANKS: 2
+      DARK_OAK_STAIRS: 3
+      DARK_OAK_SLAB: 1
+      DARK_OAK_FENCE: 3
+      DARK_OAK_FENCE_GATE: 4
+      DARK_OAK_DOOR: 5
+      DARK_OAK_TRAPDOOR: 4
+      DARK_OAK_PRESSURE_PLATE: 2
+      DARK_OAK_BUTTON: 1
+      DARK_OAK_SIGN: 3
+
+      # ---- 紅樹林木 ----
+      MANGROVE_LOG: 6
+      STRIPPED_MANGROVE_LOG: 6
+      MANGROVE_WOOD: 6
+      STRIPPED_MANGROVE_WOOD: 6
+      MANGROVE_PLANKS: 2
+      MANGROVE_STAIRS: 3
+      MANGROVE_SLAB: 1
+      MANGROVE_FENCE: 3
+      MANGROVE_FENCE_GATE: 4
+      MANGROVE_DOOR: 5
+      MANGROVE_TRAPDOOR: 4
+      MANGROVE_PRESSURE_PLATE: 2
+      MANGROVE_BUTTON: 1
+      MANGROVE_SIGN: 3
+
+      # ---- 櫻花木 ----
+      CHERRY_LOG: 8
+      STRIPPED_CHERRY_LOG: 8
+      CHERRY_WOOD: 8
+      STRIPPED_CHERRY_WOOD: 8
+      CHERRY_PLANKS: 3
+      CHERRY_STAIRS: 4
+      CHERRY_SLAB: 1
+      CHERRY_FENCE: 4
+      CHERRY_FENCE_GATE: 5
+      CHERRY_DOOR: 6
+      CHERRY_TRAPDOOR: 5
+      CHERRY_PRESSURE_PLATE: 3
+      CHERRY_BUTTON: 1
+      CHERRY_SIGN: 4
+
+      # ---- 蒼白橡木 ----
+      PALE_OAK_LOG: 8
+      STRIPPED_PALE_OAK_LOG: 8
+      PALE_OAK_WOOD: 8
+      STRIPPED_PALE_OAK_WOOD: 8
+      PALE_OAK_PLANKS: 3
+      PALE_OAK_STAIRS: 4
+      PALE_OAK_SLAB: 1
+      PALE_OAK_FENCE: 4
+      PALE_OAK_FENCE_GATE: 5
+      PALE_OAK_DOOR: 6
+      PALE_OAK_TRAPDOOR: 5
+      PALE_OAK_PRESSURE_PLATE: 3
+      PALE_OAK_BUTTON: 1
+      PALE_OAK_SIGN: 4
+
+      # ---- 緋紅木 ----
+      CRIMSON_STEM: 8
+      STRIPPED_CRIMSON_STEM: 8
+      CRIMSON_HYPHAE: 8
+      STRIPPED_CRIMSON_HYPHAE: 8
+      CRIMSON_PLANKS: 3
+      CRIMSON_STAIRS: 4
+      CRIMSON_SLAB: 1
+      CRIMSON_FENCE: 4
+      CRIMSON_FENCE_GATE: 5
+      CRIMSON_DOOR: 6
+      CRIMSON_TRAPDOOR: 5
+      CRIMSON_PRESSURE_PLATE: 3
+      CRIMSON_BUTTON: 1
+      CRIMSON_SIGN: 4
+
+      # ---- 扭曲木 ----
+      WARPED_STEM: 8
+      STRIPPED_WARPED_STEM: 8
+      WARPED_HYPHAE: 8
+      STRIPPED_WARPED_HYPHAE: 8
+      WARPED_PLANKS: 3
+      WARPED_STAIRS: 4
+      WARPED_SLAB: 1
+      WARPED_FENCE: 4
+      WARPED_FENCE_GATE: 5
+      WARPED_DOOR: 6
+      WARPED_TRAPDOOR: 5
+      WARPED_PRESSURE_PLATE: 3
+      WARPED_BUTTON: 1
+      WARPED_SIGN: 4
+
+      # ---- 竹子 ----
+      BAMBOO_BLOCK: 5
+      STRIPPED_BAMBOO_BLOCK: 5
+      BAMBOO_PLANKS: 2
+      BAMBOO_STAIRS: 3
+      BAMBOO_SLAB: 1
+      BAMBOO_FENCE: 3
+      BAMBOO_FENCE_GATE: 4
+      BAMBOO_DOOR: 5
+      BAMBOO_TRAPDOOR: 4
+      BAMBOO_PRESSURE_PLATE: 2
+      BAMBOO_BUTTON: 1
+      BAMBOO_MOSAIC: 3
+      BAMBOO_MOSAIC_STAIRS: 4
+      BAMBOO_MOSAIC_SLAB: 2
+
+  # ----------------------------------------------------------
+  nether:
+    name: '<dark_red>地獄與終界'
+    icon: NETHER_BRICKS
+    items:
+
+      # ---- 地獄石與地獄磚 ----
+      NETHERRACK: 2
+      NETHER_BRICKS: 8
+      NETHER_BRICK_FENCE: 8
+      CRACKED_NETHER_BRICKS: 8
+      CHISELED_NETHER_BRICKS: 10
+      RED_NETHER_BRICKS: 12
+
+      # ---- 黑石 ----
+      BLACKSTONE: 5
+      BLACKSTONE_STAIRS: 5
+      BLACKSTONE_SLAB: 3
+      BLACKSTONE_WALL: 5
+      POLISHED_BLACKSTONE: 7
+      POLISHED_BLACKSTONE_STAIRS: 7
+      POLISHED_BLACKSTONE_SLAB: 4
+      POLISHED_BLACKSTONE_WALL: 7
+      POLISHED_BLACKSTONE_BRICKS: 8
+      CRACKED_POLISHED_BLACKSTONE_BRICKS: 8
+      CHISELED_POLISHED_BLACKSTONE: 9
+      GILDED_BLACKSTONE: 20
+
+      # ---- 玄武岩與靈魂方塊 ----
+      BASALT: 4
+      SMOOTH_BASALT: 5
+      POLISHED_BASALT: 5
+      SOUL_SAND: 5
+      SOUL_SOIL: 5
+      MAGMA_BLOCK: 6
+
+      # ---- 菌絲與發光 ----
+      CRIMSON_NYLIUM: 6
+      WARPED_NYLIUM: 6
+      NETHER_WART_BLOCK: 8
+      WARPED_WART_BLOCK: 8
+      SHROOMLIGHT: 12
+      GLOWSTONE: 10
+
+      # ---- 終界 ----
+      END_STONE: 6
+      END_STONE_BRICKS: 8
+      PURPUR_BLOCK: 12
+      PURPUR_STAIRS: 12
+      PURPUR_SLAB: 6
+      PURPUR_PILLAR: 12
+
+  # ----------------------------------------------------------
   concrete:
-    name: '<aqua>混凝土與陶瓦'
+    name: '<aqua>混凝土'
     icon: LIGHT_BLUE_CONCRETE
     items:
+
+      # ---- 混凝土 ----
       WHITE_CONCRETE: 8
       LIGHT_GRAY_CONCRETE: 8
       GRAY_CONCRETE: 8
@@ -76,34 +459,85 @@ categories:
       PURPLE_CONCRETE: 8
       MAGENTA_CONCRETE: 8
       PINK_CONCRETE: 8
+
+      # ---- 混凝土粉末 ----
+      WHITE_CONCRETE_POWDER: 5
+      LIGHT_GRAY_CONCRETE_POWDER: 5
+      GRAY_CONCRETE_POWDER: 5
+      BLACK_CONCRETE_POWDER: 5
+      BROWN_CONCRETE_POWDER: 5
+      RED_CONCRETE_POWDER: 5
+      ORANGE_CONCRETE_POWDER: 5
+      YELLOW_CONCRETE_POWDER: 5
+      LIME_CONCRETE_POWDER: 5
+      GREEN_CONCRETE_POWDER: 5
+      CYAN_CONCRETE_POWDER: 5
+      LIGHT_BLUE_CONCRETE_POWDER: 5
+      BLUE_CONCRETE_POWDER: 5
+      PURPLE_CONCRETE_POWDER: 5
+      MAGENTA_CONCRETE_POWDER: 5
+      PINK_CONCRETE_POWDER: 5
+
+  # ----------------------------------------------------------
+  terracotta:
+    name: '<gold>陶瓦'
+    icon: TERRACOTTA
+    items:
+
+      # ---- 素陶瓦 ----
       TERRACOTTA: 6
       WHITE_TERRACOTTA: 7
+      LIGHT_GRAY_TERRACOTTA: 7
       GRAY_TERRACOTTA: 7
       BLACK_TERRACOTTA: 7
+      BROWN_TERRACOTTA: 7
       RED_TERRACOTTA: 7
       ORANGE_TERRACOTTA: 7
       YELLOW_TERRACOTTA: 7
       LIME_TERRACOTTA: 7
+      GREEN_TERRACOTTA: 7
       CYAN_TERRACOTTA: 7
+      LIGHT_BLUE_TERRACOTTA: 7
       BLUE_TERRACOTTA: 7
       PURPLE_TERRACOTTA: 7
-      WHITE_GLAZED_TERRACOTTA: 12
-      BLUE_GLAZED_TERRACOTTA: 12
-      RED_GLAZED_TERRACOTTA: 12
-      GREEN_GLAZED_TERRACOTTA: 12
+      MAGENTA_TERRACOTTA: 7
+      PINK_TERRACOTTA: 7
 
-  # ------------------------------------------------------------
+      # ---- 釉陶瓦 ----
+      WHITE_GLAZED_TERRACOTTA: 12
+      LIGHT_GRAY_GLAZED_TERRACOTTA: 12
+      GRAY_GLAZED_TERRACOTTA: 12
+      BLACK_GLAZED_TERRACOTTA: 12
+      BROWN_GLAZED_TERRACOTTA: 12
+      RED_GLAZED_TERRACOTTA: 12
+      ORANGE_GLAZED_TERRACOTTA: 12
+      YELLOW_GLAZED_TERRACOTTA: 12
+      LIME_GLAZED_TERRACOTTA: 12
+      GREEN_GLAZED_TERRACOTTA: 12
+      CYAN_GLAZED_TERRACOTTA: 12
+      LIGHT_BLUE_GLAZED_TERRACOTTA: 12
+      BLUE_GLAZED_TERRACOTTA: 12
+      PURPLE_GLAZED_TERRACOTTA: 12
+      MAGENTA_GLAZED_TERRACOTTA: 12
+      PINK_GLAZED_TERRACOTTA: 12
+
+  # ----------------------------------------------------------
   glass:
     name: '<white>玻璃'
     icon: GLASS
     items:
+
+      # ---- 玻璃 ----
       GLASS: 5
-      GLASS_PANE: 2
       TINTED_GLASS: 14
+      GLASS_PANE: 2
+
+      # ---- 染色玻璃 ----
       WHITE_STAINED_GLASS: 7
       LIGHT_GRAY_STAINED_GLASS: 7
       GRAY_STAINED_GLASS: 7
       BLACK_STAINED_GLASS: 7
+      BROWN_STAINED_GLASS: 7
       RED_STAINED_GLASS: 7
       ORANGE_STAINED_GLASS: 7
       YELLOW_STAINED_GLASS: 7
@@ -115,119 +549,378 @@ categories:
       PURPLE_STAINED_GLASS: 7
       MAGENTA_STAINED_GLASS: 7
       PINK_STAINED_GLASS: 7
-      BROWN_STAINED_GLASS: 7
+
+      # ---- 染色玻璃片 ----
       WHITE_STAINED_GLASS_PANE: 3
-      BLACK_STAINED_GLASS_PANE: 3
+      LIGHT_GRAY_STAINED_GLASS_PANE: 3
       GRAY_STAINED_GLASS_PANE: 3
+      BLACK_STAINED_GLASS_PANE: 3
+      BROWN_STAINED_GLASS_PANE: 3
+      RED_STAINED_GLASS_PANE: 3
+      ORANGE_STAINED_GLASS_PANE: 3
+      YELLOW_STAINED_GLASS_PANE: 3
+      LIME_STAINED_GLASS_PANE: 3
+      GREEN_STAINED_GLASS_PANE: 3
+      CYAN_STAINED_GLASS_PANE: 3
+      LIGHT_BLUE_STAINED_GLASS_PANE: 3
+      BLUE_STAINED_GLASS_PANE: 3
+      PURPLE_STAINED_GLASS_PANE: 3
+      MAGENTA_STAINED_GLASS_PANE: 3
+      PINK_STAINED_GLASS_PANE: 3
 
-  # ------------------------------------------------------------
-  wood:
-    name: '<gold>木材'
-    icon: OAK_PLANKS
+  # ----------------------------------------------------------
+  wool:
+    name: '<light_purple>羊毛與地毯'
+    icon: WHITE_WOOL
     items:
-      OAK_LOG: 6
-      SPRUCE_LOG: 6
-      BIRCH_LOG: 6
-      JUNGLE_LOG: 6
-      ACACIA_LOG: 6
-      DARK_OAK_LOG: 6
-      MANGROVE_LOG: 6
-      CHERRY_LOG: 8
-      PALE_OAK_LOG: 8
-      CRIMSON_STEM: 8
-      WARPED_STEM: 8
-      BAMBOO_BLOCK: 5
-      OAK_PLANKS: 2
-      SPRUCE_PLANKS: 2
-      BIRCH_PLANKS: 2
-      JUNGLE_PLANKS: 2
-      ACACIA_PLANKS: 2
-      DARK_OAK_PLANKS: 2
-      MANGROVE_PLANKS: 2
-      CHERRY_PLANKS: 3
-      BAMBOO_PLANKS: 2
-      CRIMSON_PLANKS: 3
-      WARPED_PLANKS: 3
-      OAK_STAIRS: 3
-      OAK_SLAB: 1
-      OAK_FENCE: 3
-      SPRUCE_STAIRS: 3
-      SPRUCE_SLAB: 1
-      SPRUCE_FENCE: 3
-      DARK_OAK_STAIRS: 3
-      DARK_OAK_SLAB: 1
 
-  # ------------------------------------------------------------
+      # ---- 羊毛 ----
+      WHITE_WOOL: 6
+      LIGHT_GRAY_WOOL: 6
+      GRAY_WOOL: 6
+      BLACK_WOOL: 6
+      BROWN_WOOL: 6
+      RED_WOOL: 6
+      ORANGE_WOOL: 6
+      YELLOW_WOOL: 6
+      LIME_WOOL: 6
+      GREEN_WOOL: 6
+      CYAN_WOOL: 6
+      LIGHT_BLUE_WOOL: 6
+      BLUE_WOOL: 6
+      PURPLE_WOOL: 6
+      MAGENTA_WOOL: 6
+      PINK_WOOL: 6
+
+      # ---- 地毯 ----
+      WHITE_CARPET: 3
+      LIGHT_GRAY_CARPET: 3
+      GRAY_CARPET: 3
+      BLACK_CARPET: 3
+      BROWN_CARPET: 3
+      RED_CARPET: 3
+      ORANGE_CARPET: 3
+      YELLOW_CARPET: 3
+      LIME_CARPET: 3
+      GREEN_CARPET: 3
+      CYAN_CARPET: 3
+      LIGHT_BLUE_CARPET: 3
+      BLUE_CARPET: 3
+      PURPLE_CARPET: 3
+      MAGENTA_CARPET: 3
+      PINK_CARPET: 3
+
+  # ----------------------------------------------------------
   brick:
-    name: '<red>磚材與特殊'
+    name: '<red>磚材與海洋'
     icon: BRICKS
     items:
-      BRICKS: 10
-      NETHER_BRICKS: 8
-      RED_NETHER_BRICKS: 12
-      PRISMARINE: 10
-      PRISMARINE_BRICKS: 14
-      DARK_PRISMARINE: 14
-      PURPUR_BLOCK: 12
-      END_STONE: 6
-      END_STONE_BRICKS: 8
-      BLACKSTONE: 5
-      POLISHED_BLACKSTONE: 7
-      POLISHED_BLACKSTONE_BRICKS: 8
-      BASALT: 4
-      SMOOTH_BASALT: 5
-      MUD_BRICKS: 6
-      PACKED_MUD: 4
-      SANDSTONE: 4
-      SMOOTH_SANDSTONE: 5
-      CHISELED_SANDSTONE: 6
-      RED_SANDSTONE: 4
-      SMOOTH_RED_SANDSTONE: 5
-      SAND: 2
-      RED_SAND: 2
-      GRAVEL: 2
-      CLAY: 4
 
-  # ------------------------------------------------------------
-  #  礦物方塊
-  #
-  #  這幾樣可以拆回礦物，價格全部套用「拆解價值 × 1.5」算出來。
-  #  如果你動了 sell.yml 的價格，這裡也一定要跟著改，
-  #  啟動檢查會告訴你新的建議價。
-  # ------------------------------------------------------------
+      # ---- 紅磚 ----
+      BRICKS: 10
+
+      # ---- 海磷石 ----
+      PRISMARINE: 10
+      PRISMARINE_STAIRS: 10
+      PRISMARINE_SLAB: 5
+      PRISMARINE_WALL: 10
+      PRISMARINE_BRICKS: 14
+      PRISMARINE_BRICK_STAIRS: 14
+      PRISMARINE_BRICK_SLAB: 7
+      DARK_PRISMARINE: 14
+      DARK_PRISMARINE_STAIRS: 14
+      DARK_PRISMARINE_SLAB: 7
+      SEA_LANTERN: 20
+
+      # ---- 樹脂（1.21.4） ----
+      RESIN_BLOCK: 8
+      RESIN_BRICKS: 10
+      CHISELED_RESIN_BRICKS: 12
+
+  # ----------------------------------------------------------
+  light:
+    name: '<yellow>照明與裝飾'
+    icon: LANTERN
+    items:
+
+      # ---- 照明 ----
+      TORCH: 1
+      SOUL_TORCH: 2
+      LANTERN: 8
+      SOUL_LANTERN: 10
+      END_ROD: 8
+      OCHRE_FROGLIGHT: 15
+      VERDANT_FROGLIGHT: 15
+      PEARLESCENT_FROGLIGHT: 15
+      CAMPFIRE: 8
+      SOUL_CAMPFIRE: 10
+
+      # ---- 蠟燭 ----
+      CANDLE: 4
+      WHITE_CANDLE: 5
+      LIGHT_GRAY_CANDLE: 5
+      GRAY_CANDLE: 5
+      BLACK_CANDLE: 5
+      BROWN_CANDLE: 5
+      RED_CANDLE: 5
+      ORANGE_CANDLE: 5
+      YELLOW_CANDLE: 5
+      LIME_CANDLE: 5
+      GREEN_CANDLE: 5
+      CYAN_CANDLE: 5
+      LIGHT_BLUE_CANDLE: 5
+      BLUE_CANDLE: 5
+      PURPLE_CANDLE: 5
+      MAGENTA_CANDLE: 5
+      PINK_CANDLE: 5
+
+      # ---- 結構配件 ----
+      IRON_CHAIN: 6
+      IRON_BARS: 5
+      LADDER: 2
+      SCAFFOLDING: 2
+
+      # ---- 裝飾 ----
+      FLOWER_POT: 3
+      ITEM_FRAME: 5
+      GLOW_ITEM_FRAME: 8
+      PAINTING: 6
+      ARMOR_STAND: 8
+      BOOKSHELF: 12
+      CHISELED_BOOKSHELF: 12
+
+  # ----------------------------------------------------------
+  nature:
+    name: '<green>植栽與自然'
+    icon: AZALEA
+    items:
+
+      # ---- 樹葉 ----
+      OAK_LEAVES: 3
+      SPRUCE_LEAVES: 3
+      BIRCH_LEAVES: 3
+      JUNGLE_LEAVES: 3
+      ACACIA_LEAVES: 3
+      DARK_OAK_LEAVES: 3
+      MANGROVE_LEAVES: 3
+      CHERRY_LEAVES: 3
+      PALE_OAK_LEAVES: 3
+      AZALEA_LEAVES: 3
+      FLOWERING_AZALEA_LEAVES: 3
+
+      # ---- 樹苗與灌木 ----
+      OAK_SAPLING: 8
+      SPRUCE_SAPLING: 8
+      BIRCH_SAPLING: 8
+      JUNGLE_SAPLING: 8
+      ACACIA_SAPLING: 8
+      DARK_OAK_SAPLING: 8
+      CHERRY_SAPLING: 8
+      PALE_OAK_SAPLING: 8
+      MANGROVE_PROPAGULE: 8
+      AZALEA: 8
+      FLOWERING_AZALEA: 10
+      MANGROVE_ROOTS: 5
+      MUDDY_MANGROVE_ROOTS: 5
+
+      # ---- 農作與雜項 ----
+      HAY_BLOCK: 8
+      BONE_BLOCK: 10
+      DRIED_KELP_BLOCK: 8
+      SPONGE: 25
+      VINE: 3
+      GLOW_LICHEN: 5
+      CACTUS: 4
+      BAMBOO: 2
+      SUGAR_CANE: 3
+      LILY_PAD: 4
+      PUMPKIN: 6
+      CARVED_PUMPKIN: 8
+      JACK_O_LANTERN: 12
+      MELON: 6
+      MUSHROOM_STEM: 5
+      BROWN_MUSHROOM_BLOCK: 5
+      RED_MUSHROOM_BLOCK: 5
+
+      # ---- 花 ----
+      DANDELION: 3
+      POPPY: 3
+      BLUE_ORCHID: 3
+      ALLIUM: 3
+      AZURE_BLUET: 3
+      OXEYE_DAISY: 3
+      CORNFLOWER: 3
+      LILY_OF_THE_VALLEY: 3
+      RED_TULIP: 3
+      ORANGE_TULIP: 3
+      WHITE_TULIP: 3
+      PINK_TULIP: 3
+      SUNFLOWER: 3
+      LILAC: 3
+      ROSE_BUSH: 3
+      PEONY: 3
+      PINK_PETALS: 3
+      TORCHFLOWER: 3
+      PITCHER_PLANT: 3
+      SHORT_GRASS: 3
+      TALL_GRASS: 3
+      FERN: 3
+      LARGE_FERN: 3
+
+  # ----------------------------------------------------------
   oreblock:
     name: '<light_purple>礦物方塊'
     icon: COPPER_BLOCK
     items:
-      # 9 銅錠 × 4 = 36 → 至少 54
+
+      # ---- ⚠ 會拆回銅錠：9 銅錠 x 4 = 36，安全價 54 ----
       COPPER_BLOCK:
         price: 54
-        note: '拆解價值 36，安全價 54'
-      # 4 石英 × 8 = 32 → 至少 48（原版其實不能拆，保守定價）
+        note: '可還原成銅方塊，售價必須 >= 54'
+      EXPOSED_COPPER:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+      WEATHERED_COPPER:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+      OXIDIZED_COPPER:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+      WAXED_COPPER_BLOCK:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+      WAXED_EXPOSED_COPPER:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+      WAXED_WEATHERED_COPPER:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+      WAXED_OXIDIZED_COPPER:
+        price: 54
+        note: '可還原成銅方塊，售價必須 >= 54'
+
+      # ---- 切製銅（拆不回銅錠，價格對齊銅方塊） ----
+      CUT_COPPER: 56
+      CUT_COPPER_STAIRS: 56
+      CUT_COPPER_SLAB: 28
+      EXPOSED_CUT_COPPER: 56
+      EXPOSED_CUT_COPPER_STAIRS: 56
+      EXPOSED_CUT_COPPER_SLAB: 28
+      WEATHERED_CUT_COPPER: 56
+      WEATHERED_CUT_COPPER_STAIRS: 56
+      WEATHERED_CUT_COPPER_SLAB: 28
+      OXIDIZED_CUT_COPPER: 56
+      OXIDIZED_CUT_COPPER_STAIRS: 56
+      OXIDIZED_CUT_COPPER_SLAB: 28
+      WAXED_CUT_COPPER: 56
+      WAXED_CUT_COPPER_STAIRS: 56
+      WAXED_CUT_COPPER_SLAB: 28
+      WAXED_EXPOSED_CUT_COPPER: 56
+      WAXED_EXPOSED_CUT_COPPER_STAIRS: 56
+      WAXED_EXPOSED_CUT_COPPER_SLAB: 28
+      WAXED_WEATHERED_CUT_COPPER: 56
+      WAXED_WEATHERED_CUT_COPPER_STAIRS: 56
+      WAXED_WEATHERED_CUT_COPPER_SLAB: 28
+      WAXED_OXIDIZED_CUT_COPPER: 56
+      WAXED_OXIDIZED_CUT_COPPER_STAIRS: 56
+      WAXED_OXIDIZED_CUT_COPPER_SLAB: 28
+
+      # ---- 銅製建材 ----
+      CHISELED_COPPER: 56
+      COPPER_GRATE: 56
+      COPPER_BULB: 60
+      COPPER_DOOR: 58
+      COPPER_TRAPDOOR: 58
+      COPPER_BARS: 8
+      COPPER_CHAIN: 8
+      COPPER_LANTERN: 12
+      EXPOSED_CHISELED_COPPER: 56
+      EXPOSED_COPPER_GRATE: 56
+      EXPOSED_COPPER_BULB: 60
+      EXPOSED_COPPER_DOOR: 58
+      EXPOSED_COPPER_TRAPDOOR: 58
+      EXPOSED_COPPER_BARS: 8
+      EXPOSED_COPPER_CHAIN: 8
+      EXPOSED_COPPER_LANTERN: 12
+      WEATHERED_CHISELED_COPPER: 56
+      WEATHERED_COPPER_GRATE: 56
+      WEATHERED_COPPER_BULB: 60
+      WEATHERED_COPPER_DOOR: 58
+      WEATHERED_COPPER_TRAPDOOR: 58
+      WEATHERED_COPPER_BARS: 8
+      WEATHERED_COPPER_CHAIN: 8
+      WEATHERED_COPPER_LANTERN: 12
+      OXIDIZED_CHISELED_COPPER: 56
+      OXIDIZED_COPPER_GRATE: 56
+      OXIDIZED_COPPER_BULB: 60
+      OXIDIZED_COPPER_DOOR: 58
+      OXIDIZED_COPPER_TRAPDOOR: 58
+      OXIDIZED_COPPER_BARS: 8
+      OXIDIZED_COPPER_CHAIN: 8
+      OXIDIZED_COPPER_LANTERN: 12
+      WAXED_CHISELED_COPPER: 56
+      WAXED_COPPER_GRATE: 56
+      WAXED_COPPER_BULB: 60
+      WAXED_COPPER_DOOR: 58
+      WAXED_COPPER_TRAPDOOR: 58
+      WAXED_COPPER_BARS: 8
+      WAXED_COPPER_CHAIN: 8
+      WAXED_COPPER_LANTERN: 12
+      WAXED_EXPOSED_CHISELED_COPPER: 56
+      WAXED_EXPOSED_COPPER_GRATE: 56
+      WAXED_EXPOSED_COPPER_BULB: 60
+      WAXED_EXPOSED_COPPER_DOOR: 58
+      WAXED_EXPOSED_COPPER_TRAPDOOR: 58
+      WAXED_EXPOSED_COPPER_BARS: 8
+      WAXED_EXPOSED_COPPER_CHAIN: 8
+      WAXED_EXPOSED_COPPER_LANTERN: 12
+      WAXED_WEATHERED_CHISELED_COPPER: 56
+      WAXED_WEATHERED_COPPER_GRATE: 56
+      WAXED_WEATHERED_COPPER_BULB: 60
+      WAXED_WEATHERED_COPPER_DOOR: 58
+      WAXED_WEATHERED_COPPER_TRAPDOOR: 58
+      WAXED_WEATHERED_COPPER_BARS: 8
+      WAXED_WEATHERED_COPPER_CHAIN: 8
+      WAXED_WEATHERED_COPPER_LANTERN: 12
+      WAXED_OXIDIZED_CHISELED_COPPER: 56
+      WAXED_OXIDIZED_COPPER_GRATE: 56
+      WAXED_OXIDIZED_COPPER_BULB: 60
+      WAXED_OXIDIZED_COPPER_DOOR: 58
+      WAXED_OXIDIZED_COPPER_TRAPDOOR: 58
+      WAXED_OXIDIZED_COPPER_BARS: 8
+      WAXED_OXIDIZED_COPPER_CHAIN: 8
+      WAXED_OXIDIZED_COPPER_LANTERN: 12
+      COPPER_TORCH: 3
+
+      # ---- 石英（原版拆不回石英，仍保守定價） ----
       QUARTZ_BLOCK:
         price: 48
         note: '拆解價值 32，安全價 48'
-      CHISELED_QUARTZ_BLOCK:
-        price: 48
-      QUARTZ_PILLAR:
-        price: 48
-      # 9 煤炭 × 3 = 27 → 至少 41
+      QUARTZ_BRICKS: 48
+      CHISELED_QUARTZ_BLOCK: 48
+      QUARTZ_PILLAR: 48
+      QUARTZ_STAIRS: 48
+      QUARTZ_SLAB: 24
+      SMOOTH_QUARTZ: 48
+      SMOOTH_QUARTZ_STAIRS: 48
+      SMOOTH_QUARTZ_SLAB: 24
+
+      # ---- 其他礦物方塊 ----
       COAL_BLOCK:
         price: 41
-        note: '拆解價值 27，安全價 41'
-      # 9 紅石 × 3 = 27 → 至少 41
+        note: '9 煤炭 x 3 = 27，安全價 41'
       REDSTONE_BLOCK:
         price: 41
-        note: '拆解價值 27，安全價 41'
-      # 4 紫水晶 × 6 = 24 → 至少 36
+        note: '9 紅石 x 3 = 27，安全價 41'
       AMETHYST_BLOCK:
         price: 36
-        note: '拆解價值 24，安全價 36'
-      # 9 青金石 × 12 = 108 → 至少 162
+        note: '4 紫水晶 x 6 = 24，安全價 36'
       LAPIS_BLOCK:
         price: 162
-        note: '拆解價值 108，安全價 162'
-      CUT_COPPER: 56
-      EXPOSED_COPPER: 54
-      WEATHERED_COPPER: 54
-      OXIDIZED_COPPER: 54
+        note: '9 青金石 x 12 = 108，安全價 162'
+      IRON_BLOCK:
+        price: 90
+        note: '鐵目前不在收購清單，若之後開放要重算'
+      GOLD_BLOCK:
+        price: 120
+        note: '金目前不在收購清單，若之後開放要重算'

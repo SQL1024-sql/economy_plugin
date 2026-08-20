@@ -51,9 +51,14 @@ public final class StoreCommand implements TabExecutor, Listener {
             return true;
         }
 
-        StoreSettings.Category category = args.length > 0
-                ? settings.category(args[0])
-                : settings.categories().get(0);
+        if (args.length == 0) {
+            // With a dozen categories, dropping the player into whichever one happens to be first
+            // hides most of the shop. The picker is the honest front page.
+            new io.github.sql1024.dasha.ui.StoreCategoryMenu(plugin, player).open();
+            return true;
+        }
+
+        StoreSettings.Category category = settings.category(args[0]);
         if (category == null) {
             player.sendMessage(Lang.mini("<red>沒有這個分類。可用分類："));
             list(player);
