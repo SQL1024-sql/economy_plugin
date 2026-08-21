@@ -89,7 +89,8 @@ public final class Database {
             CREATE TABLE IF NOT EXISTS prices (
                 symbol         TEXT PRIMARY KEY NOT NULL,
                 price          REAL NOT NULL,
-                previous_price REAL NOT NULL
+                previous_price REAL NOT NULL,
+                source         TEXT NOT NULL DEFAULT ''
             )
             """,
             """
@@ -208,6 +209,30 @@ public final class Database {
                 statement.executeUpdate(sql);
             }
         }
+        migrate();
+    }
+
+    /**
+     * Schema changes for databases created by an older build. {@code CREATE TABLE IF NOT EXISTS}
+     * leaves an existing table alone, so a new column has to be added explicitly; SQLite has no
+     * {@code ADD COLUMN IF NOT EXISTS}, and adding one that is already there is the expected
+     * outcome on every boot after the first.
+     */
+    private void migrate() {
+        addColumnIfMissing("prices", "source", "TEXT NOT NULL DEFAULT ''");
+    }
+
+    private void addColumnIfMissing(String table, String column, String definition) {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "ALTER TABLE " + table + " ADD COLUMN " + column + " " + definition);
+            plugin.getLogger().info("資料庫升級：" + table + " 新增欄位 " + column + "。");
+        } catch (SQLException e) {
+            if (!String.valueOf(e.getMessage()).contains("duplicate column")) {
+                plugin.getLogger().warning("資料庫升級失敗（" + table + "." + column + "）："
+                        + e.getMessage());
+            }
+        }
     }
 
     private void prune() {
@@ -290,17 +315,30 @@ public final class Database {
         });
     }
 
-    public void savePrice(String symbol, double price, double previousPrice) {
+    public void savePrice(String symbol, double price, double previousPrice, String source) {
         submit("儲存股價", () -> {
             String sql = """
-                    INSERT INTO prices (symbol, price, previous_price) VALUES (?, ?, ?)
+                    INSERT INTO prices (symbol, price, previous_price, source) VALUES (?, ?, ?, ?)
                     ON CONFLICT (symbol) DO UPDATE SET
-                        price = excluded.price, previous_price = excluded.previous_price
+                        price = excluded.price, previous_price = excluded.previous_price,
+                        source = excluded.source
                     """;
             try (PreparedStatement statement = connection.prepareStatement(sql)) {
                 statement.setString(1, symbol);
                 statement.setDouble(2, price);
                 statement.setDouble(3, previousPrice);
+                statement.setString(4, source == null ? "" : source);
+                statement.executeUpdate();
+            }
+        });
+    }
+
+    /** Drops every recorded point for one stock, for when its price régime changed. */
+    public void clearHistory(String symbol) {
+        submit("清除歷史股價", () -> {
+            try (PreparedStatement statement = connection.prepareStatement(
+                    "DELETE FROM price_history WHERE symbol = ?")) {
+                statement.setString(1, symbol);
                 statement.executeUpdate();
             }
         });
@@ -418,15 +456,27 @@ public final class Database {
         });
     }
 
-    public Map<String, double[]> loadPrices() {
+    /**
+     * A price as it was last written, plus the pricing régime that produced it.
+     *
+     * @param source régime key; empty for rows written before régimes were tracked, which are
+     *               therefore never trusted
+     */
+    public record StoredPrice(double price, double previousPrice, String source) {
+    }
+
+    public Map<String, StoredPrice> loadPrices() {
         return read("讀取股價", Map.of(), () -> {
-            Map<String, double[]> result = new HashMap<>();
+            Map<String, StoredPrice> result = new HashMap<>();
             try (Statement statement = connection.createStatement();
                  ResultSet rows = statement.executeQuery(
-                         "SELECT symbol, price, previous_price FROM prices")) {
+                         "SELECT symbol, price, previous_price, source FROM prices")) {
                 while (rows.next()) {
-                    result.put(rows.getString("symbol"),
-                            new double[] {rows.getDouble("price"), rows.getDouble("previous_price")});
+                    String source = rows.getString("source");
+                    result.put(rows.getString("symbol"), new StoredPrice(
+                            rows.getDouble("price"),
+                            rows.getDouble("previous_price"),
+                            source == null ? "" : source));
                 }
             }
             return result;

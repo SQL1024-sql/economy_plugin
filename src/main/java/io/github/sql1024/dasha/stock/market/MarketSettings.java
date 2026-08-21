@@ -90,6 +90,18 @@ public record MarketSettings(
     }
 
     /** 大沙幣 per unit of {@code currency}; unknown currencies fall back to 1:1. */
+    /**
+     * Compact fingerprint of the configured conversion rates. Part of the régime key: changing a
+     * rate rescales every price on that exchange, which makes older history incomparable.
+     */
+    public String ratesFingerprint() {
+        StringBuilder sb = new StringBuilder();
+        currencyRates.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(e -> sb.append(e.getKey()).append('=').append(e.getValue()).append(','));
+        return Integer.toHexString(sb.toString().hashCode());
+    }
+
     public double rateFor(String currency) {
         if (currency == null) {
             return 1.0;

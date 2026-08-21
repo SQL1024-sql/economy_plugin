@@ -213,7 +213,8 @@ public final class DashaEconomyPlugin extends JavaPlugin {
 
         if (market != null && database != null) {
             for (Stock stock : market.stocks()) {
-                database.savePrice(stock.symbol(), stock.price(), stock.previousPrice());
+                database.savePrice(stock.symbol(), stock.price(), stock.previousPrice(),
+                        market.regimeKey(stock, settings));
             }
         }
         if (auctions != null) {
@@ -344,19 +345,44 @@ public final class DashaEconomyPlugin extends JavaPlugin {
         lang.currencyName(currency.displayName());
     }
 
-    /** Applies the stored price and history to any stock that does not have a live price yet. */
+    /**
+     * Applies the stored price and history to any stock that does not have a live price yet.
+     *
+     * <p>Stored points are only replayed when they were produced by the pricing régime that is
+     * running now. A server that switched {@code price-source}, repointed a ticker or changed a
+     * currency rate has a database full of numbers on a different scale; splicing those onto the
+     * current price makes the chart show a crash that never happened and poisons the high/low
+     * range and the moving averages with it. Those rows are dropped instead.
+     */
     private void restoreMarketState() {
-        Map<String, double[]> storedPrices = database.loadPrices();
+        Map<String, Database.StoredPrice> storedPrices = database.loadPrices();
         Map<String, List<Double>> storedHistory = database.loadHistory(settings.historyPoints());
+        int reset = 0;
+
         for (Stock stock : market.stocks()) {
-            double[] stored = storedPrices.get(stock.symbol());
-            if (stored != null && stored[0] > 0.0) {
-                stock.restore(stored[0], stored[1]);
+            Database.StoredPrice stored = storedPrices.get(stock.symbol());
+            String regime = market.regimeKey(stock, settings);
+
+            if (stored != null && !regime.equals(stored.source())) {
+                // Different world. Forget everything we recorded about this stock.
+                database.clearHistory(stock.symbol());
+                stock.loadHistory(List.of());
+                reset++;
+                continue;
+            }
+
+            if (stored != null && stored.price() > 0.0) {
+                stock.restore(stored.price(), stored.previousPrice());
             }
             List<Double> history = storedHistory.get(stock.symbol());
             if (history != null && !history.isEmpty() && stock.history().isEmpty()) {
                 stock.loadHistory(history);
             }
+        }
+
+        if (reset > 0) {
+            getLogger().info("定價方式變了，" + reset + " 檔股票的舊走勢圖已清空 —— "
+                    + "那些價格跟現在不是同一個尺度，留著會畫出一根不存在的崩盤。");
         }
     }
 

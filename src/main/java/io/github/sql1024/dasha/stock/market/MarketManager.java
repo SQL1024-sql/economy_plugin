@@ -120,18 +120,23 @@ public final class MarketManager {
 
         String dayKey = TradingDay.current();
         for (Stock stock : stocks.values()) {
-            double candidate = nextPrice(stock, settings, dayKey);
-            if (Double.isNaN(candidate)) {
+            Step step = nextStep(stock, settings, dayKey);
+            if (Double.isNaN(step.price())) {
                 // Real market shut and freezing is on: leave the price exactly where it is.
                 continue;
             }
-            stock.moveTo(candidate);
+            if (step.real()) {
+                stock.moveToReal(step.price());
+            } else {
+                stock.moveTo(step.price());
+            }
             moved.add(stock);
         }
 
         long now = System.currentTimeMillis();
         for (Stock stock : moved) {
-            plugin.database().savePrice(stock.symbol(), stock.price(), stock.previousPrice());
+            plugin.database().savePrice(stock.symbol(), stock.price(), stock.previousPrice(),
+                    regimeKey(stock, settings));
             plugin.database().appendHistory(stock.symbol(), now, stock.price(), settings.historyPoints());
         }
 
@@ -153,7 +158,7 @@ public final class MarketManager {
      * that in-game news builds up, so a headline still moves the board without the price drifting
      * away from reality for good.
      */
-    private double nextPrice(Stock stock, MarketSettings settings, String dayKey) {
+    private Step nextStep(Stock stock, MarketSettings settings, String dayKey) {
         PriceSource source = settings.priceSource();
 
         if (source.needsFeed() && stock.realSymbol() != null) {
@@ -168,35 +173,74 @@ public final class MarketManager {
                 // early return: a shut market still has a day change to report.
                 stock.setDayAnchor(quote.previousClose() * rate);
 
-                double converted = stock.clamp(quote.price() * rate);
+                double converted = quote.price() * rate;
 
                 if (!quote.open() && source == PriceSource.REAL) {
                     if (settings.closedDriftPercent() > 0.0) {
                         // A frozen board is dull; a whisper of drift keeps night play alive
                         // without pretending the real market moved.
                         double drift = settings.closedDriftPercent() / 100.0;
-                        return stock.clamp(converted * (1.0 + random.nextGaussian() * drift));
+                        return Step.real(converted * (1.0 + random.nextGaussian() * drift));
                     }
                     if (settings.freezeWhenClosed()) {
                         // Still sync to the real close once — a server booted outside trading
                         // hours would otherwise sit on config placeholder prices until the
                         // exchange reopens. Once matched, stop recording flat ticks.
-                        return sameAsNow(converted, stock.price()) ? Double.NaN : converted;
+                        return sameAsNow(converted, stock.price()) ? Step.NONE : Step.real(converted);
                     }
                 }
 
                 if (source == PriceSource.HYBRID) {
-                    return stock.clamp(converted * (1.0 + advanceOverlay(stock, settings)));
+                    return Step.real(converted * (1.0 + advanceOverlay(stock, settings)));
                 }
-                return converted;
+                return Step.real(converted);
             }
             if (!settings.fallbackToSimulated()) {
                 // No reading yet and no fallback allowed: better a stale price than a made-up one.
-                return Double.NaN;
+                return Step.NONE;
             }
         }
 
-        return simulatedPrice(stock, settings, dayKey);
+        return new Step(simulatedPrice(stock, settings, dayKey), false);
+    }
+
+    /**
+     * One computed price step. {@code real} marks a price copied from the exchange, which is
+     * exempt from the configured price band and which the stored-history régime check treats
+     * as a different world from a simulated price.
+     */
+    private record Step(double price, boolean real) {
+
+        static final Step NONE = new Step(Double.NaN, false);
+
+        static Step real(double price) {
+            return new Step(price, true);
+        }
+    }
+
+    /**
+     * Identifies the pricing régime a stored price and its history were produced under.
+     *
+     * <p>Price history is only meaningful when every point in it came out of the same machinery.
+     * Switching {@code price-source}, repointing a stock at a different ticker, editing a currency
+     * rate or moving the configured band all rescale the numbers — keeping the old points would
+     * splice two unrelated series together, and the chart, the high/low range and the moving
+     * averages would all describe a crash that never happened. When this key changes, the old
+     * points are thrown away rather than drawn.
+     */
+    public String regimeKey(Stock stock, MarketSettings settings) {
+        StringBuilder key = new StringBuilder(settings.priceSource().name());
+        key.append('|').append(stock.realSymbol() == null ? "-" : stock.realSymbol());
+        if (settings.priceSource().needsFeed() && stock.realSymbol() != null) {
+            // Real prices come from the exchange, so only the conversion rate can rescale them.
+            key.append("|fx").append(settings.ratesFingerprint());
+        } else {
+            // A simulated walk lives entirely inside its configured band.
+            key.append("|sim").append(Math.round(stock.initialPrice() * 100.0))
+                    .append('/').append(Math.round(stock.minPrice() * 100.0))
+                    .append('/').append(Math.round(stock.maxPrice() * 100.0));
+        }
+        return key.toString();
     }
 
     /** Whether two prices are the same to within rounding, so no history point is worth adding. */
@@ -233,7 +277,8 @@ public final class MarketManager {
     /** Admin override: jumps a price without a random step, but still records history. */
     public void setPrice(Stock stock, double price) {
         stock.moveTo(price);
-        plugin.database().savePrice(stock.symbol(), stock.price(), stock.previousPrice());
+        plugin.database().savePrice(stock.symbol(), stock.price(), stock.previousPrice(),
+                regimeKey(stock, plugin.settings()));
         plugin.database().appendHistory(
                 stock.symbol(), System.currentTimeMillis(), stock.price(), plugin.settings().historyPoints());
         plugin.menus().refreshOpenMenus();

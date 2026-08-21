@@ -224,14 +224,34 @@ public final class Stock {
 
     /** Replaces the live price without recording history — used when loading from storage. */
     public void restore(double price, double previousPrice) {
-        this.price = clamp(price);
-        this.previousPrice = previousPrice > 0.0 ? clamp(previousPrice) : this.price;
+        // Stored prices are replayed as-is: a real quote is legitimately allowed outside the
+        // configured band, and the régime check upstream has already decided this row is ours.
+        this.price = price;
+        this.previousPrice = previousPrice > 0.0 ? previousPrice : this.price;
     }
 
     /** Sets the price as a discrete market move, recording the old price as the previous one. */
     public void moveTo(double newPrice) {
+        push(clamp(newPrice));
+    }
+
+    /**
+     * Moves to a price that came from the real exchange, ignoring the configured price band.
+     *
+     * <p>{@code min-price} and {@code max-price} exist to keep the random walk from wandering off;
+     * applied to a real quote they would silently show a price the exchange never printed, which
+     * is worse than any chart being ugly. Only the positivity check survives here.
+     */
+    public void moveToReal(double newPrice) {
+        if (!Double.isFinite(newPrice) || newPrice <= 0.0) {
+            return;
+        }
+        push(newPrice);
+    }
+
+    private void push(double newPrice) {
         this.previousPrice = this.price;
-        this.price = clamp(newPrice);
+        this.price = newPrice;
         history.add(this.price);
         while (history.size() > historyPoints) {
             history.remove(0);
