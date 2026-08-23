@@ -1,14 +1,12 @@
 package io.github.sql1024.dasha.ui;
 
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 import io.github.sql1024.dasha.DashaEconomyPlugin;
 import io.github.sql1024.dasha.auction.Msg;
 import io.github.sql1024.dasha.core.Fmt;
+import io.github.sql1024.dasha.stats.EcoStats;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
@@ -20,8 +18,11 @@ import org.bukkit.inventory.meta.SkullMeta;
 /**
  * 富豪榜。
  *
- * <p>The share-of-supply column is the point of this screen for an operator: if one player holds
- * most of the money, that is not skill showing through, it is a channel leaking.
+ * <p>Ranked on net worth — cash plus holdings at market value — because ranking on cash alone
+ * quietly punished anyone who was invested at the moment somebody looked.
+ *
+ * <p>The share column is the point of this screen for an operator: if one player holds most of
+ * the wealth, that is not skill showing through, it is a channel leaking.
  */
 public final class RichListMenu extends Gui {
 
@@ -42,28 +43,34 @@ public final class RichListMenu extends Gui {
     public void render() {
         inventory.clear();
 
-        List<Map.Entry<UUID, Long>> sorted =
-                new ArrayList<>(plugin.economy().allBalances().entrySet());
-        sorted.sort(Map.Entry.<UUID, Long>comparingByValue(Comparator.reverseOrder()));
+        List<EcoStats.Wealth> ranked = plugin.stats().ranking();
+        long total = Math.max(1L, plugin.stats().totalWealth());
 
-        long supply = Math.max(1L, plugin.economy().totalSupply());
         int index = 0;
-        for (Map.Entry<UUID, Long> entry : sorted) {
-            if (index >= SLOTS.length || entry.getValue() <= 0L) {
+        for (EcoStats.Wealth wealth : ranked) {
+            if (index >= SLOTS.length) {
                 break;
             }
-            inventory.setItem(SLOTS[index], headFor(index + 1, entry.getKey(), entry.getValue(), supply));
+            inventory.setItem(SLOTS[index], headFor(index + 1, wealth, total));
             index++;
         }
         if (index == 0) {
             inventory.setItem(SLOTS[0], icon(Material.BARRIER, "<gray>還沒有人持有大沙幣"));
         }
 
-        inventory.setItem(SLOT_SUPPLY, icon(Material.GOLD_BLOCK, "<gold>全服流通總量",
-                "<gray>總量　<yellow>" + Fmt.coin(plugin.economy().totalSupply()),
-                "<gray>帳戶　<white>" + plugin.economy().accountCount() + "</white> 個",
-                "<gray>人均　<white>" + Fmt.coin(plugin.economy().accountCount() == 0
-                        ? 0L : plugin.economy().totalSupply() / plugin.economy().accountCount()),
+        long cash = plugin.economy().totalSupply();
+        long held = Math.max(0L, plugin.stats().totalWealth() - cash);
+        int accounts = plugin.economy().accountCount();
+        inventory.setItem(SLOT_SUPPLY, icon(Material.GOLD_BLOCK, "<gold>全服資產總量",
+                "<gray>現金流通　<yellow>" + Fmt.coin(cash),
+                "<gray>持股市值　<aqua>" + Fmt.coin(held),
+                "<gray>合計　<white>" + Fmt.coin(cash + held),
+                "",
+                "<gray>帳戶　<white>" + accounts + "</white> 個",
+                "<gray>人均　<white>" + Fmt.coin(accounts == 0 ? 0L : (cash + held) / accounts),
+                "",
+                "<dark_gray>持股市值會隨股價浮動，所以這個總量",
+                "<dark_gray>不等於系統發行出去的大沙幣數量。",
                 "",
                 "<dark_gray>如果有人佔比特別高，那通常不是他很會玩，",
                 "<dark_gray>是某條管道漏了。"));
@@ -72,8 +79,9 @@ public final class RichListMenu extends Gui {
         fillEmpty(Material.BLACK_STAINED_GLASS_PANE);
     }
 
-    private ItemStack headFor(int rank, UUID uuid, long balance, long supply) {
-        double share = balance * 100.0 / supply;
+    private ItemStack headFor(int rank, EcoStats.Wealth wealth, long total) {
+        UUID uuid = wealth.uuid();
+        double share = wealth.total() * 100.0 / total;
         String name = plugin.playerName(uuid);
 
         ItemStack head = new ItemStack(Material.PLAYER_HEAD);
@@ -88,7 +96,11 @@ public final class RichListMenu extends Gui {
         };
         applyMeta(head, medal + "<white>" + name, List.of(
                 "<dark_gray>━━━━━━━━━━━━━━━",
-                "<gray>餘額　<yellow>" + Fmt.coin(balance),
+                "<gray>總資產　<white>" + Fmt.coin(wealth.total()),
+                "",
+                "<gray>現金　<yellow>" + Fmt.coin(wealth.cash()),
+                "<gray>持股市值　<aqua>" + Fmt.coin(wealth.stocks()),
+                "",
                 "<gray>佔全服　<white>" + Fmt.price(share) + "%"));
         return head;
     }

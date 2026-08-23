@@ -2,8 +2,10 @@ package io.github.sql1024.dasha.stats;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import io.github.sql1024.dasha.DashaEconomyPlugin;
@@ -127,25 +129,78 @@ public final class EcoStats {
     }
 
     /** Top balances, newest snapshot of who holds the money. */
+    /**
+     * One player's total worth and the two forms it is held in.
+     *
+     * <p>Ranking on cash alone rewarded staying out of the market: a player who put everything
+     * into stocks looked poor right up until they sold. Net worth is what the leaderboard is
+     * actually trying to say.
+     *
+     * @param cash   大沙幣 in the account
+     * @param stocks holdings valued at the current market price
+     */
+    public record Wealth(UUID uuid, long cash, long stocks) {
+
+        public long total() {
+            return cash + stocks;
+        }
+    }
+
+    /**
+     * Everyone holding anything at all, richest first.
+     *
+     * <p>Built from both ledgers rather than the account list alone, so a player who has spent
+     * every coin on shares still appears.
+     */
+    public List<Wealth> ranking() {
+        Set<UUID> everyone = new HashSet<>(plugin.economy().allBalances().keySet());
+        everyone.addAll(plugin.portfolios().everyone().keySet());
+
+        List<Wealth> ranked = new ArrayList<>(everyone.size());
+        for (UUID uuid : everyone) {
+            long cash = plugin.economy().balance(uuid);
+            long stocks = plugin.portfolios().marketValue(uuid);
+            if (cash + stocks <= 0L) {
+                continue;
+            }
+            ranked.add(new Wealth(uuid, cash, stocks));
+        }
+        ranked.sort(Comparator.comparingLong(Wealth::total).reversed());
+        return ranked;
+    }
+
+    /**
+     * Cash in circulation plus the market value of every holding — the denominator the share
+     * column is a share of. Using the money supply alone would let a heavily invested server
+     * report percentages adding up to far more than 100.
+     */
+    public long totalWealth() {
+        long total = plugin.economy().totalSupply();
+        for (UUID uuid : plugin.portfolios().everyone().keySet()) {
+            total += plugin.portfolios().marketValue(uuid);
+        }
+        return total;
+    }
+
     public List<Component> richList(int limit) {
-        List<Map.Entry<UUID, Long>> sorted = new ArrayList<>(plugin.economy().allBalances().entrySet());
-        sorted.sort(Map.Entry.<UUID, Long>comparingByValue(Comparator.reverseOrder()));
+        List<Wealth> ranked = ranking();
 
         List<Component> lines = new ArrayList<>();
         lines.add(Lang.mini("<dark_gray>━━━━━━ <gold>大沙幣富豪榜</gold> <dark_gray>━━━━━━"));
-        long supply = Math.max(1L, plugin.economy().totalSupply());
+        lines.add(Lang.mini("<dark_gray>總資產 = 現金 + 持股市值"));
+
+        long total = Math.max(1L, totalWealth());
         int rank = 1;
-        for (Map.Entry<UUID, Long> entry : sorted) {
+        for (Wealth wealth : ranked) {
             if (rank > limit) {
                 break;
             }
-            if (entry.getValue() <= 0L) {
-                break;
-            }
-            double share = entry.getValue() * 100.0 / supply;
-            lines.add(Lang.mini("<gray>" + rank + ". <white>" + plugin.playerName(entry.getKey())
-                    + "</white>　<yellow>" + Fmt.coin(entry.getValue()) + "</yellow>"
+            double share = wealth.total() * 100.0 / total;
+            lines.add(Lang.mini("<gray>" + rank + ". <white>" + plugin.playerName(wealth.uuid())
+                    + "</white>　<yellow>" + Fmt.coin(wealth.total()) + "</yellow>"
                     + " <dark_gray>(" + Fmt.price(share) + "%)"));
+            lines.add(Lang.mini("<dark_gray>    現金 " + Fmt.coin(wealth.cash())
+                    + "　持股 " + Fmt.coin(wealth.stocks())));
             rank++;
         }
         if (rank == 1) {
