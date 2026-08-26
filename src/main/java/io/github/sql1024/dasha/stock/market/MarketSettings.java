@@ -102,9 +102,22 @@ public record MarketSettings(
         return Integer.toHexString(sb.toString().hashCode());
     }
 
+    /**
+     * Conversion rate for a currency code as the exchange reports it.
+     *
+     * <p>The exact code is looked up first, and only then the upper-cased one. That distinction is
+     * load-bearing: London quotes in {@code GBp} — pence, a hundredth of a pound — and folding the
+     * case would match it to {@code GBP} and price the stock a hundred times too high. Other
+     * exchanges do the same thing ({@code ILA} agorot, {@code ZAc} cents), so the rule is general
+     * rather than a special case for one ticker.
+     */
     public double rateFor(String currency) {
         if (currency == null) {
             return 1.0;
+        }
+        Double exact = currencyRates.get(currency);
+        if (exact != null) {
+            return exact;
         }
         return currencyRates.getOrDefault(currency.toUpperCase(Locale.ROOT), 1.0);
     }

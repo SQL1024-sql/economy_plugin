@@ -76,6 +76,11 @@ market:
       HKD: 0.128
       EUR: 1.08
       GBP: 1.27
+      SAR: 0.267
+      # ⚠ GBp（小寫 p）是「便士」，不是英鎊 —— 倫敦交易所報的就是這個。
+      #   兩者差 100 倍，所以這一行不能刪，也不能跟 GBP 合併。
+      #   查匯率時大小寫是分開比對的，GBp 只會對到這一行。
+      GBp: 0.0127
 
   # 每隔幾秒更新一次股價（一次更新 = 一根 K 棒）
   update-interval-seconds: 300
@@ -868,3 +873,99 @@ stocks:
     drift: 0.0
     min-price: 20.90
     max-price: 8361.78
+
+  # ============================================================
+  #  F1 一級方程式
+  #
+  #  ⚠ 大部分車隊沒有股票可買。Red Bull、McLaren、Williams、Haas
+  #    都是私人公司，沒有公開交易的股價，所以這裡不會有它們。
+  #    有上市的車隊多半是「買母公司」：Alpine 買雷諾、Audi 買福斯、
+  #    Cadillac 買通用、Mercedes 買賓士集團。
+  #
+  #  只有法拉利是例外 —— Ferrari N.V. 本身就是上市公司，
+  #  買 RACE 買到的就是那支車隊的母體。
+  # ============================================================
+
+  'F1':
+    display-name: '<gold>F1 <gray>一級方程式集團'
+    real-symbol: 'FWONK'
+    icon: FIREWORK_ROCKET
+    initial-price: 104.50
+    volatility: 0.03
+    drift: 0.0
+    min-price: 5.22
+    max-price: 2090.00
+  'RACE':
+    display-name: '<red>法拉利 <gray>Scuderia Ferrari'
+    real-symbol: 'RACE'
+    icon: REDSTONE_BLOCK
+    initial-price: 421.85
+    volatility: 0.03
+    drift: 0.0
+    min-price: 21.09
+    max-price: 8437.00
+  'MERC':
+    display-name: '<white>賓士 <gray>Mercedes-AMG 車隊母公司'
+    real-symbol: 'MBG.DE'
+    icon: IRON_BLOCK
+    initial-price: 48.51
+    volatility: 0.03
+    drift: 0.0
+    min-price: 2.43
+    max-price: 970.27
+  # 股價只有 34 便士，換算後不到 1 大沙幣 —— 這是真的，
+  # Aston Martin Lagonda 的股價就是這麼低，不是換算錯。
+  'AMR':
+    display-name: '<green>奧斯頓馬丁 <gray>Aston Martin'
+    real-symbol: 'AML.L'
+    icon: EMERALD_BLOCK
+    initial-price: 0.44
+    volatility: 0.05
+    drift: 0.0
+    min-price: 0.02
+    max-price: 8.82
+  'ALPI':
+    display-name: '<blue>Alpine <gray>車隊母公司 Renault'
+    real-symbol: 'RNO.PA'
+    icon: LAPIS_BLOCK
+    initial-price: 29.58
+    volatility: 0.04
+    drift: 0.0
+    min-price: 1.48
+    max-price: 591.62
+  'AUDI':
+    display-name: '<dark_gray>Audi <gray>車隊母公司 Volkswagen'
+    real-symbol: 'VOW3.DE'
+    icon: QUARTZ_BLOCK
+    initial-price: 79.16
+    volatility: 0.03
+    drift: 0.0
+    min-price: 3.96
+    max-price: 1583.28
+  'CADI':
+    display-name: '<yellow>Cadillac <gray>車隊母公司 GM'
+    real-symbol: 'GM'
+    icon: GOLD_BLOCK
+    initial-price: 85.81
+    volatility: 0.03
+    drift: 0.0
+    min-price: 4.29
+    max-price: 1716.20
+  'PIRE':
+    display-name: '<dark_gray>倍耐力 <gray>Pirelli 獨家輪胎供應商'
+    real-symbol: 'PIRC.MI'
+    icon: BLACK_CONCRETE
+    initial-price: 7.28
+    volatility: 0.03
+    drift: 0.0
+    min-price: 0.36
+    max-price: 145.58
+  'ARMC':
+    display-name: '<dark_green>Aramco <gray>F1 全球夥伴'
+    real-symbol: '2222.SR'
+    icon: GREEN_CONCRETE
+    initial-price: 7.02
+    volatility: 0.02
+    drift: 0.0
+    min-price: 0.35
+    max-price: 140.34
